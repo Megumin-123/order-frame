@@ -244,7 +244,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
         <table className="w-full table-fixed">
           <colgroup>
             <col style={{width:'125px'}} />{/* サイズ */}
-            <col style={{width:'135px'}} />{/* 納品日 */}
+            <col style={{width:'155px'}} />{/* 納品日 */}
             <col style={{width:'60px'}} />{/* 数量 */}
             <col style={{width:'50px'}} />{/* 数量計 */}
             <col style={{width:'65px'}} />{/* 単価 */}
