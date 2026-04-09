@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { COLOR_OPTIONS, ORDER_STATUS } from '@/lib/constants';
 import type { Order, DeliveryScheduleWithProduct } from '@/lib/types';
 
-// 日付を月/日の形式で表示（年が変わる場合は年も表示）
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -16,10 +14,13 @@ function formatDate(dateStr: string): string {
   const month = parseInt(parts[1]);
   const day = parseInt(parts[2]);
   const currentYear = new Date().getFullYear();
-  if (year !== currentYear) {
-    return `${year}/${month}/${day}`;
-  }
+  if (year !== currentYear) return `${year}/${month}/${day}`;
   return `${month}/${day}`;
+}
+
+function getTodayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function DashboardPage() {
@@ -42,8 +43,7 @@ export default function DashboardPage() {
 
   const draftOrders = orders.filter(o => o.status === 'draft');
   const activeOrders = orders.filter(o => ['submitted', 'partially_delivered'].includes(o.status));
-  const upcomingDeliveries = deliveries.slice(0, 10);
-
+  const today = getTodayStr();
   const getColorStyle = (code: string) => COLOR_OPTIONS.find(c => c.code === code) || COLOR_OPTIONS[0];
 
   return (
@@ -80,21 +80,21 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-6">
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xl font-semibold">直近の納品予定</h2>
+            <h2 className="text-xl font-semibold">納品予定（全未納品）</h2>
             <Link href="/deliveries">
-              <Button variant="link" className="text-base">すべて見る</Button>
+              <span className="text-blue-600 hover:underline text-base">納品一覧へ</span>
             </Link>
           </div>
-          {upcomingDeliveries.length === 0 ? (
+          {deliveries.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-gray-500">
                 納品予定はありません
               </CardContent>
             </Card>
           ) : (
-            <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="bg-white rounded-lg border overflow-hidden max-h-[500px] overflow-y-auto">
               <table className="w-full">
-                <thead>
+                <thead className="sticky top-0">
                   <tr className="bg-gray-50">
                     <th className="text-left px-3 py-2 font-semibold">納品予定日</th>
                     <th className="text-left px-3 py-2 font-semibold">商品</th>
@@ -103,12 +103,16 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {upcomingDeliveries.map(d => {
+                  {deliveries.map(d => {
                     const colorStyle = getColorStyle(d.color_code);
+                    const isToday = d.delivery_date === today;
+                    const isOverdue = d.delivery_date < today;
                     return (
-                      <tr key={d.id} className={`border-t ${colorStyle.bgClass}`}>
-                        <td className="px-3 py-2">
+                      <tr key={d.id} className={`border-t ${isOverdue ? 'bg-red-50' : isToday ? 'bg-green-50' : colorStyle.bgClass}`}>
+                        <td className="px-3 py-2 whitespace-nowrap">
                           {formatDate(d.delivery_date)}
+                          {isToday && <span className="ml-1 px-1.5 py-0.5 bg-green-200 text-green-800 rounded text-xs font-medium">本日</span>}
+                          {isOverdue && <span className="ml-1 px-1.5 py-0.5 bg-red-200 text-red-800 rounded text-xs font-medium">遅延</span>}
                         </td>
                         <td className="px-3 py-2">
                           <span className={`px-1.5 py-0.5 rounded text-sm ${colorStyle.bgClass} ${colorStyle.textClass} mr-1`}>{d.color_label}</span>
@@ -133,7 +137,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-xl font-semibold">最近の発注書</h2>
             <Link href="/orders">
-              <Button variant="link" className="text-base">すべて見る</Button>
+              <span className="text-blue-600 hover:underline text-base">すべて見る</span>
             </Link>
           </div>
           {orders.length === 0 ? (
@@ -178,14 +182,6 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className="mt-8 flex justify-center">
-        <Link href="/stock-check">
-          <Button className="text-lg h-14 px-8">
-            在庫登録を開始する
-          </Button>
-        </Link>
       </div>
     </div>
   );

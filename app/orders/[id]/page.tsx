@@ -94,9 +94,11 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
   const handleSave = async () => {
     setSaving(true);
-    const syncedItems = items.map(item => ({
-      ...item, quantity: item.deliverySchedules.reduce((s, d) => s + (d.quantity || 0), 0),
-    }));
+    const syncedItems = items.map(item => {
+      // 空の納品日行を除外（日付なし or 数量0）
+      const validSchedules = item.deliverySchedules.filter(d => d.deliveryDate && d.quantity > 0);
+      return { ...item, deliverySchedules: validSchedules, quantity: validSchedules.reduce((s, d) => s + (d.quantity || 0), 0) };
+    });
     try {
       await fetch(`/api/orders/${id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -291,8 +293,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                       <div className="flex items-center gap-1">
                         {firstDs ? (
                           isEditable ? (
-                            <Input type="date" className="h-9 text-sm bg-white border-blue-300 flex-1" value={firstDs.deliveryDate}
-                              onChange={e => updateDelivery(globalIdx, 0, 'deliveryDate', e.target.value)} />
+                            <>
+                              <Input type="date" className="h-9 text-sm bg-white border-blue-300 flex-1" value={firstDs.deliveryDate}
+                                onChange={e => updateDelivery(globalIdx, 0, 'deliveryDate', e.target.value)} />
+                              <button className="w-6 h-6 rounded-full bg-red-100 text-red-500 text-sm hover:bg-red-200 flex items-center justify-center shrink-0"
+                                onClick={() => removeDelivery(globalIdx, 0)} title="削除">×</button>
+                            </>
                           ) : <span className="text-sm">{firstDs.deliveryDate}</span>
                         ) : (
                           <div className="flex-1" />

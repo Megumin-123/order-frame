@@ -81,6 +81,36 @@ export default function StockCheckPage() {
     setSubmitting(false);
   };
 
+  const handlePrintCheckSheet = () => {
+    const today = new Date().toLocaleDateString('ja-JP');
+    const colorHeaders = COLOR_OPTIONS.map(c => `<th style="padding:8px 16px;text-align:center;background:${
+      c.code === 'YELLOW_OAK' ? '#fef3c7' : c.code === 'BROWN' ? '#dbc8a8' : '#e0f2fe'
+    };font-weight:bold;">${c.label}</th>`).join('');
+
+    const rows = SIZE_OPTIONS.map(size => {
+      const cells = COLOR_OPTIONS.map(color => {
+        const product = getProduct(size.code, color.code);
+        if (!product || !product.is_active) return '<td style="padding:8px 16px;text-align:center;border:1px solid #ddd;background:#f5f5f5;">-</td>';
+        return '<td style="padding:12px 16px;text-align:center;border:1px solid #ddd;min-width:60px;">&nbsp;</td>';
+      }).join('');
+      return `<tr><td style="padding:8px 12px;border:1px solid #ddd;font-weight:bold;">${size.label}</td><td style="padding:8px 12px;border:1px solid #ddd;">${size.frameName}</td>${cells}</tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>在庫チェック表</title>
+<style>body{font-family:'MS Gothic',sans-serif;margin:30px}table{border-collapse:collapse;width:100%}
+@media print{body{margin:15mm}}</style></head>
+<body><h2 style="text-align:center">在庫チェック表</h2>
+<p style="text-align:right">チェック日: ${today}　担当者: ＿＿＿＿＿＿</p>
+<table><thead><tr><th style="padding:8px;text-align:left;background:#f0f0f0;border:1px solid #ddd;">サイズ</th>
+<th style="padding:8px;text-align:left;background:#f0f0f0;border:1px solid #ddd;">額サイズ</th>${colorHeaders}</tr></thead>
+<tbody>${rows}</tbody></table>
+<p style="margin-top:20px;font-size:12px">※ 各セルに在庫数を記入してください</p>
+<script>window.print();</script></body></html>`;
+
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
   if (loading) return <div className="text-center py-12 text-lg">読み込み中...</div>;
 
   return (
@@ -94,7 +124,12 @@ export default function StockCheckPage() {
           </div>
         )}
       </div>
-      <p className="text-gray-600 mb-6">各商品の現在庫数を入力してください</p>
+      <div className="flex justify-between items-center mb-6">
+        <p className="text-gray-600">各商品の現在庫数を入力してください</p>
+        <Button variant="outline" className="text-base h-10 px-4" onClick={handlePrintCheckSheet}>
+          チェック表を印刷
+        </Button>
+      </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
         <table className="w-full">
