@@ -416,11 +416,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   return (
     <div>
       {/* Top bar */}
+      <h1 className="text-2xl font-bold mb-3">発注書</h1>
       <div className="bg-white rounded-lg border p-4 mb-4">
         <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold">{order.order_number}</h1>
-            <span className={`px-4 py-1 rounded-full text-sm font-medium ${status.color}`}>{status.label}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-lg text-gray-700">{order.order_number}</span>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.color}`}>{status.label}</span>
           </div>
           <div className="flex gap-2">
             {isEditable && (
@@ -458,12 +459,18 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
         </div>
         {deliveryDates.size > 0 && (
           <div className="flex items-center gap-3 mt-3 pt-3 border-t flex-wrap">
-            <span className="text-sm text-gray-600 font-medium">納品日別:</span>
-            {Array.from(deliveryDates.entries()).sort().map(([date, info]) => (
-              <span key={date} className="px-3 py-1 bg-blue-50 text-blue-800 rounded text-sm">
-                {date} ({info.count}品/{info.total}個)
-              </span>
-            ))}
+            <span className="text-gray-600 font-medium">納品日別:</span>
+            {Array.from(deliveryDates.entries()).sort().map(([date, info]) => {
+              const parts = date.split('-');
+              const d = parts.length === 3 ? new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])) : null;
+              const weekdays = ['日','月','火','水','木','金','土'];
+              const display = d ? `${parseInt(parts[1])}月${parseInt(parts[2])}日(${weekdays[d.getDay()]})` : date;
+              return (
+                <span key={date} className="px-3 py-1 bg-blue-50 text-blue-800 rounded-lg text-base font-medium">
+                  {display}（{info.total}個）
+                </span>
+              );
+            })}
           </div>
         )}
       </div>
