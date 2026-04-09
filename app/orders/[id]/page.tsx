@@ -467,7 +467,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               const display = d ? `${parseInt(parts[1])}月${parseInt(parts[2])}日(${weekdays[d.getDay()]})` : date;
               return (
                 <span key={date} className="px-3 py-1 bg-blue-50 text-blue-800 rounded-lg text-base font-medium">
-                  {display}（{info.total}個）
+                  {display} <span className="text-lg font-bold text-blue-900">{info.total}個</span>
                 </span>
               );
             })}
