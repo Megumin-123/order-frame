@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias=\"@/*\" --use-npm)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init -d)",
+      "Bash(npx shadcn@latest add dialog input label table card badge select tabs separator toast textarea -y)",
+      "Bash(npx shadcn@latest add dialog input label table card badge select tabs separator sonner -y)",
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python -c \":*)",
+      "Bash(grep -r \"手動送信\\\\|manual.*send\\\\|LINE.*send\" C:UserssmiliOneDriveDesktopcaludezaiko_brasssrcapp --include=*.tsx --include=*.ts)",
+      "Bash(gh repo:*)",
+      "Bash(where gh:*)"
+    ]
+  }
+}
