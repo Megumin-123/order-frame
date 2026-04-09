@@ -168,17 +168,10 @@ export default function ProductsPage() {
                 <Input className="text-base h-12 mt-1" value={editProduct.name}
                   onChange={e => setEditProduct({ ...editProduct, name: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-base">単価(税抜)</Label>
-                  <Input type="number" className="text-base h-12 mt-1" value={editProduct.unit_price}
-                    onChange={e => setEditProduct({ ...editProduct, unit_price: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <Label className="text-base">入数/箱</Label>
-                  <Input type="number" className="text-base h-12 mt-1" value={editProduct.pieces_per_box}
-                    onChange={e => setEditProduct({ ...editProduct, pieces_per_box: parseInt(e.target.value) || 1 })} />
-                </div>
+              <div>
+                <Label className="text-base">単価(税抜)</Label>
+                <Input type="number" className="text-base h-12 mt-1" value={editProduct.unit_price}
+                  onChange={e => setEditProduct({ ...editProduct, unit_price: parseInt(e.target.value) || 0 })} />
               </div>
               <div>
                 <Label className="text-base">商品仕様</Label>
@@ -187,9 +180,9 @@ export default function ProductsPage() {
                   onChange={e => setEditProduct({ ...editProduct, specs: e.target.value })} />
               </div>
               {editProduct.category === 'frame' && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <Label className="text-base">在庫下限値(○個以下で発注)</Label>
+                    <Label className="text-base">在庫下限値</Label>
                     <Input type="number" className="text-base h-12 mt-1" value={editProduct.trigger_stock}
                       onChange={e => setEditProduct({ ...editProduct, trigger_stock: parseInt(e.target.value) || 0 })} />
                   </div>
@@ -198,6 +191,18 @@ export default function ProductsPage() {
                     <Input type="number" className="text-base h-12 mt-1" value={editProduct.order_quantity}
                       onChange={e => setEditProduct({ ...editProduct, order_quantity: parseInt(e.target.value) || 0 })} />
                   </div>
+                  <div>
+                    <Label className="text-base">入数/箱</Label>
+                    <Input type="number" className="text-base h-12 mt-1" value={editProduct.pieces_per_box}
+                      onChange={e => setEditProduct({ ...editProduct, pieces_per_box: parseInt(e.target.value) || 1 })} />
+                  </div>
+                </div>
+              )}
+              {editProduct.category === 'other' && (
+                <div>
+                  <Label className="text-base">入数/箱</Label>
+                  <Input type="number" className="text-base h-12 mt-1" value={editProduct.pieces_per_box}
+                    onChange={e => setEditProduct({ ...editProduct, pieces_per_box: parseInt(e.target.value) || 1 })} />
                 </div>
               )}
             </div>
