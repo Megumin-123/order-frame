@@ -13,7 +13,19 @@
       "Bash(gh repo:*)",
       "Bash(where gh:*)",
       "Bash(npx next:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(python scripts/query-mdb.py \"{\\\\\"deliveryDate\\\\\":\\\\\"2026-04-09\\\\\",\\\\\"mdbPath\\\\\":\\\\\"C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\smili\\\\\\\\\\\\\\\\Documents\\\\\\\\\\\\\\\\system\\\\\\\\\\\\\\\\sysdata.mdb\\\\\"}\")",
+      "Bash(python scripts/query-mdb.py '{\"deliveryDate\":\"2026-04-09\",\"mdbPath\":\"C:\\\\\\\\Users\\\\\\\\smili\\\\\\\\Documents\\\\\\\\system\\\\\\\\sysdata.mdb\"}')",
+      "Bash(python scripts/query-mdb.py 2026-04-09 \"C:\\\\Users\\\\smili\\\\Documents\\\\system\\\\sysdata.mdb\")",
+      "Bash(python scripts/query-mdb.py 2026-03-01 \"C:\\\\Users\\\\smili\\\\Documents\\\\system\\\\sysdata.mdb\")",
+      "Bash(rm -rf .next/dev)",
+      "Bash(rm -rf .next/cache)",
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /PID 48604 /F)",
+      "Bash(cmd //c \"taskkill /PID 48604 /F\")",
+      "Bash(node -e \"console.log\\('node ok'\\)\")",
+      "Bash(cmd //c \"taskkill /PID 24400 /F\")"
     ]
   }
 }

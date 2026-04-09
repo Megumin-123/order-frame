@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     of_orders!inner(order_number, order_date, status)
   `).order('delivery_date').order('id');
 
+  query = query.gt('quantity', 0);
   if (dateFrom) query = query.gte('delivery_date', dateFrom);
   if (dateTo) query = query.lte('delivery_date', dateTo);
   if (colorCode) query = query.eq('of_products.color_code', colorCode);
