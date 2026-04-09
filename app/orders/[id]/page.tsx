@@ -334,18 +334,15 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                       ) : <span className="text-sm text-gray-400">-</span>}
                       {item.currentStock !== null && (
                         <div className="hidden group-hover:block absolute z-50 right-full mr-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
-                          <div className="font-medium mb-1">在庫内訳</div>
                           <div>現在庫: {item.currentStock}個</div>
-                          {item.pendingDeliveryDetails.length > 0 ? (
-                            <>
-                              <div className="mt-1 font-medium text-blue-300">納品予定:</div>
-                              {item.pendingDeliveryDetails.map((d, i) => (
-                                <div key={i} className="ml-2">{d.date} {d.qty}個</div>
-                              ))}
-                              <div className="mt-1 border-t border-gray-600 pt-1 font-medium">合計: {item.currentStock + item.pendingDelivery}個</div>
-                            </>
-                          ) : (
-                            <div className="text-gray-400 text-xs mt-1">納品予定なし</div>
+                          {item.pendingDeliveryDetails.length > 0 && (
+                            <div className="mt-1">
+                              {item.pendingDeliveryDetails.map((d, i) => {
+                                const parts = d.date.split('-');
+                                const short = parts.length === 3 ? `${parseInt(parts[1])}/${parseInt(parts[2])}` : d.date;
+                                return <span key={i} className="mr-2">{short}:{d.qty}個</span>;
+                              })}
+                            </div>
                           )}
                           <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
                         </div>
