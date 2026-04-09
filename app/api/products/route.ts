@@ -31,6 +31,6 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   const { id } = await request.json();
-  await supabase.from('of_products').update({ is_active: 0 }).eq('id', id).eq('category', 'other');
+  await supabase.from('of_products').update({ is_active: 0 }).eq('id', id);
   return NextResponse.json({ success: true });
 }

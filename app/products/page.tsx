@@ -50,6 +50,17 @@ export default function ProductsPage() {
     fetchProducts();
   };
 
+  const handleHideProduct = async (id: number, name: string) => {
+    if (!confirm(`「${name}」を非表示にしますか？\n発注書や在庫登録に表示されなくなります。`)) return;
+    await fetch('/api/products', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    toast.success('非表示にしました');
+    fetchProducts();
+  };
+
   const handleDeleteOther = async (id: number) => {
     await fetch('/api/products', {
       method: 'DELETE',
@@ -102,9 +113,11 @@ export default function ProductsPage() {
                     <td className="px-4 py-3 text-center">{product.trigger_stock}個以下</td>
                     <td className="px-4 py-3 text-right font-medium">{product.order_quantity}個</td>
                     <td className="px-4 py-3 text-right">{product.pieces_per_box}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center space-x-2">
                       <Button variant="outline" size="sm" className="text-base px-4 py-2"
                         onClick={() => setEditProduct({ ...product })}>編集</Button>
+                      <Button variant="outline" size="sm" className="text-base px-3 py-2 text-gray-400 hover:text-red-500"
+                        onClick={() => handleHideProduct(product.id, product.size_label)}>非表示</Button>
                     </td>
                   </tr>
                 ))}
