@@ -119,7 +119,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }).join('');
 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>発注書 ${order.order_number}</title>
-<style>body{font-family:'MS Gothic',monospace;font-size:14px;margin:40px}h1{text-align:center;font-size:24px}table{border-collapse:collapse;width:100%;margin:20px 0}th{background:#e8e8e8;border:1px solid #ccc;padding:8px;text-align:center}.totals{text-align:right;margin-top:20px}.totals div{margin:4px 0}@media print{body{margin:20mm}}</style></head>
+<style>body{font-family:'MS Gothic',monospace;font-size:13px;margin:30px}h1{text-align:center;font-size:22px}table{border-collapse:collapse;width:100%;margin:15px 0}th{background:#e8e8e8;border:1px solid #ccc;padding:6px;text-align:center;white-space:nowrap}td{white-space:nowrap;padding:6px;border:1px solid #ccc}.totals{text-align:right;margin-top:15px}.totals div{margin:3px 0}@media print{@page{size:landscape}body{margin:10mm}}</style></head>
 <body><h1>注文書</h1>
 <div style="display:flex;justify-content:space-between;margin:20px 0"><div><strong style="font-size:16px">${SUPPLIER_NAME} 御中</strong><br>(fax:${SUPPLIER_FAX})</div><div style="text-align:right"><strong>${COMPANY_NAME}</strong><br>${COMPANY_ADDRESS}<br>TEL.${COMPANY_TEL} FAX.${COMPANY_FAX}</div></div>
 <div>発注番号: ${order.order_number} | 発注日: ${order.order_date}</div>

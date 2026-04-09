@@ -333,7 +333,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                         </span>
                       ) : <span className="text-sm text-gray-400">-</span>}
                       {item.currentStock !== null && (
-                        <div className="hidden group-hover:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
+                        <div className="hidden group-hover:block absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
                           <div className="font-medium mb-1">在庫内訳</div>
                           <div>現在庫: {item.currentStock}個</div>
                           {item.pendingDeliveryDetails.length > 0 ? (
@@ -347,7 +347,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                           ) : (
                             <div className="text-gray-400 text-xs mt-1">納品予定なし</div>
                           )}
-                          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                          <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
                         </div>
                       )}
                     </td>

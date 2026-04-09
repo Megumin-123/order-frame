@@ -126,7 +126,7 @@ export default function StockCheckPage() {
       </div>
       <div className="flex justify-between items-center mb-6">
         <p className="text-gray-600">各商品の現在庫数を入力してください</p>
-        <Button variant="outline" className="text-base h-10 px-4" onClick={handlePrintCheckSheet}>
+        <Button className="text-base h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white" onClick={handlePrintCheckSheet}>
           チェック表を印刷
         </Button>
       </div>

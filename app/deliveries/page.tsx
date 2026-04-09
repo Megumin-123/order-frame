@@ -1,11 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { COLOR_OPTIONS } from '@/lib/constants';
 import type { DeliveryScheduleWithProduct } from '@/lib/types';
 import { toast } from 'sonner';
+
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+function formatDateWithDay(dateStr: string): string {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  return `${dateStr} (${WEEKDAYS[d.getDay()]})`;
+}
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
@@ -95,7 +105,12 @@ export default function DeliveriesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">納品一覧</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">納品一覧</h1>
+        <Button variant="outline" className="text-base h-10 px-4" onClick={() => window.print()}>
+          印刷
+        </Button>
+      </div>
 
       <div className="bg-white rounded-lg border p-4 mb-6 flex flex-wrap items-end gap-4">
         <div>
@@ -139,7 +154,7 @@ export default function DeliveriesPage() {
           return (
             <div key={date} className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-xl font-semibold">{date}</h2>
+                <h2 className="text-xl font-semibold">{formatDateWithDay(date)}</h2>
                 <span className="text-gray-500">{items.length}商品 / {totalQty}個</span>
                 {receivedCount === items.length ? (
                   <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-sm">全て納品済み</span>
@@ -220,7 +235,11 @@ export default function DeliveriesPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-xs text-gray-400 whitespace-nowrap">{item.order_number}</td>
+                          <td className="px-3 py-2 text-xs whitespace-nowrap">
+                            <Link href={`/orders/${item.order_id}`} className="text-gray-400 hover:text-blue-600 hover:underline">
+                              {item.order_number}
+                            </Link>
+                          </td>
                         </tr>
                       );
                     })}
