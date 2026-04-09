@@ -404,21 +404,17 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                           let periodFrom = '';
                           let periodTo = '';
                           if (cnt > 0) {
-                            // 今年の納品日から月末までの日数で計算
-                            let delDate = '';
-                            for (const it of items) {
-                              for (const ds of it.deliverySchedules) {
-                                if (ds.deliveryDate && (!delDate || ds.deliveryDate < delDate)) delDate = ds.deliveryDate;
-                              }
-                            }
+                            // この商品の納品日から月末までの日数で計算
+                            const myDelivery = item.deliverySchedules.find(ds => ds.deliveryDate && ds.quantity > 0);
+                            const delDate = myDelivery?.deliveryDate || '';
                             if (delDate) {
                               const dp = delDate.split('-');
                               const dd = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]));
-                              const lastDay = new Date(dd.getFullYear(), dd.getMonth() + 1, 0);
-                              const daysToEnd = Math.max(1, Math.ceil((lastDay.getTime() - dd.getTime()) / (1000*60*60*24)) + 1);
+                              const lastDayOfMonth = new Date(dd.getFullYear(), dd.getMonth() + 1, 0);
+                              const daysToEnd = Math.max(1, lastDayOfMonth.getDate() - dd.getDate() + 1);
                               estimate = Math.round(cnt / 30 * daysToEnd);
                               periodFrom = delDate;
-                              periodTo = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${lastDay.getDate()}`;
+                              periodTo = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${lastDayOfMonth.getDate()}`;
                             }
                           }
                           const hasDelivery = item.deliverySchedules.some(ds => ds.deliveryDate && ds.quantity > 0);

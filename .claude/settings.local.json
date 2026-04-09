@@ -26,7 +26,8 @@
       "Bash(cmd //c \"taskkill /PID 48604 /F\")",
       "Bash(node -e \"console.log\\('node ok'\\)\")",
       "Bash(cmd //c \"taskkill /PID 24400 /F\")",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(node -e ':*)"
     ]
   }
 }
