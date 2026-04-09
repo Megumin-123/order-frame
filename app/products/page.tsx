@@ -17,7 +17,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchProducts = async () => {
-    const res = await fetch('/api/products');
+    const res = await fetch('/api/products?all=1');
     const data = await res.json();
     setProducts(data);
     setLoading(false);
@@ -105,19 +105,20 @@ export default function ProductsPage() {
               </thead>
               <tbody>
                 {group.products.map(product => (
-                  <tr key={product.id} className="border-t border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{product.size_label}</td>
+                  <tr key={product.id} className={`border-t border-gray-200 hover:bg-gray-50 ${!product.is_active ? 'opacity-40' : ''}`}>
+                    <td className="px-4 py-3 font-medium">
+                      {product.size_label}
+                      {!product.is_active && <span className="ml-2 text-xs text-red-500 bg-red-50 px-1.5 py-0.5 rounded">非表示</span>}
+                    </td>
                     <td className="px-4 py-3">{product.frame_size_name}</td>
                     <td className="px-4 py-3 text-right">{product.unit_price.toLocaleString()}円</td>
                     <td className="px-4 py-3 text-sm">{product.specs || '-'}</td>
                     <td className="px-4 py-3 text-center">{product.trigger_stock}個以下</td>
                     <td className="px-4 py-3 text-right font-medium">{product.order_quantity}個</td>
                     <td className="px-4 py-3 text-right">{product.pieces_per_box}</td>
-                    <td className="px-4 py-3 text-center space-x-2">
+                    <td className="px-4 py-3 text-center">
                       <Button variant="outline" size="sm" className="text-base px-4 py-2"
                         onClick={() => setEditProduct({ ...product })}>編集</Button>
-                      <Button variant="outline" size="sm" className="text-base px-3 py-2 text-gray-400 hover:text-red-500"
-                        onClick={() => handleHideProduct(product.id, product.size_label)}>非表示</Button>
                     </td>
                   </tr>
                 ))}
@@ -231,6 +232,29 @@ export default function ProductsPage() {
                   <Input type="number" className="text-base h-12 mt-1" value={editProduct.pieces_per_box}
                     onChange={e => setEditProduct({ ...editProduct, pieces_per_box: parseInt(e.target.value) || 1 })} />
                 </div>
+              )}
+            </div>
+          )}
+          {editProduct && (
+            <div className="border-t pt-3 mt-2">
+              {editProduct.is_active ? (
+                <Button variant="outline" size="sm" className="text-sm text-gray-400 hover:text-red-500"
+                  onClick={() => { handleHideProduct(editProduct.id, editProduct.size_label || editProduct.name); setEditProduct(null); }}>
+                  この商品を非表示にする
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" className="text-sm text-blue-600"
+                  onClick={async () => {
+                    await fetch('/api/products', {
+                      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ ...editProduct, is_active: 1 }),
+                    });
+                    toast.success('再表示しました');
+                    setEditProduct(null);
+                    fetchProducts();
+                  }}>
+                  この商品を再表示する
+                </Button>
               )}
             </div>
           )}
