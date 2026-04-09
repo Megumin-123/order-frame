@@ -32,7 +32,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [settings, setSettings] = useState<{ delivery_lead_days?: string }>({});
+  const [settings, setSettings] = useState<{ delivery_lead_days?: string; mdb_path?: string }>({});
+  const [orderStats, setOrderStats] = useState<Record<string, Record<string, number>> | null>(null);
+  const [statsPeriod, setStatsPeriod] = useState<{ from: string; to: string } | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   const isEditable = order?.status === 'draft';
 
@@ -105,6 +108,35 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   };
 
   const [sendingLine, setSendingLine] = useState(false);
+
+  const handleCalcStats = async () => {
+    // Find the first delivery date from items
+    let deliveryDate = '';
+    for (const item of items) {
+      for (const ds of item.deliverySchedules) {
+        if (ds.deliveryDate && (!deliveryDate || ds.deliveryDate < deliveryDate)) {
+          deliveryDate = ds.deliveryDate;
+        }
+      }
+    }
+    if (!deliveryDate) { toast.warning('納品予定日が設定されていません'); return; }
+
+    setLoadingStats(true);
+    try {
+      const res = await fetch('/api/order-stats', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deliveryDate, mdbPath: settings.mdb_path }),
+      });
+      const data = await res.json();
+      if (data.error) { toast.error(data.error); }
+      else {
+        setOrderStats(data.stats);
+        setStatsPeriod(data.period);
+        toast.success('注文実績を計算しました');
+      }
+    } catch { toast.error('注文実績の計算に失敗しました'); }
+    setLoadingStats(false);
+  };
 
   const handleSendLine = async () => {
     setSendingLine(true);
@@ -217,6 +249,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <col style={{width:'85px'}} />{/* 小計 */}
             <col style={{width:'6px'}} />{/* 区切り */}
             <col style={{width:'55px'}} />{/* 有効在庫 */}
+            {orderStats && <col style={{width:'55px'}} />}{/* 注文実績 */}
             <col style={{width:'48px'}} />{/* 下限値 */}
             <col style={{width:'48px'}} />{/* 補充数 */}
             <col style={{width:'48px'}} />{/* 入数/箱 */}
@@ -231,6 +264,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               <th className="text-right px-2 py-2 font-semibold">小計</th>
               <th className="py-2"></th>
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500" title="現在庫 + 他の発注の未納品数">有効在庫</th>
+              {orderStats && (
+                <th className="text-center px-1 py-2 text-sm font-semibold text-orange-600"
+                  title={statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数` : ''}>30日注文</th>
+              )}
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">下限値</th>
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">補充数</th>
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">入数/箱</th>
@@ -308,6 +345,31 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                         </div>
                       )}
                     </td>
+                    {orderStats && (
+                      <td className="px-1 py-1.5 text-center relative group/stats" rowSpan={rowCount}>
+                        {(() => {
+                          const sizeMap: Record<string, string> = { SS:'SS', S:'S', M:'M', M_PLUS:'M_PLUS', L:'L', LL:'LL' };
+                          const sizeCode = Object.entries(sizeMap).find(([, v]) => v === item.sizeLabel.replace('mini(SS)','SS').replace('Sサイズ','S').replace('Mサイズ','M').replace('Mプラス','M_PLUS').replace('Lサイズ','L').replace('LLサイズ','LL'))?.[1];
+                          const colorMap: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
+                          const colorCode = colorMap[item.colorLabel] || 'YELLOW_OAK';
+                          const count = sizeCode && orderStats[sizeCode] ? orderStats[sizeCode][colorCode] || 0 : 0;
+                          return (
+                            <>
+                              <span className={`text-base font-medium cursor-help ${count > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                                {count}
+                              </span>
+                              {statsPeriod && (
+                                <div className="hidden group-hover/stats:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
+                                  <div className="font-medium">30日間の注文数: {count}個</div>
+                                  <div className="text-gray-300 text-xs mt-1">{statsPeriod.from} ～ {statsPeriod.to}</div>
+                                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </td>
+                    )}
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.triggerStock}</td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.stdOrderQty}</td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.piecesPerBox}</td>
@@ -365,6 +427,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <Button className="text-base h-10 px-5 bg-emerald-500 hover:bg-emerald-600 text-white"
               onClick={handleSendLine} disabled={sendingLine}>
               {sendingLine ? '送信中...' : '承認依頼をLINEで送信'}
+            </Button>
+            <Button variant="outline" className="text-base h-10 px-5 text-orange-600 border-orange-300 hover:bg-orange-50"
+              onClick={handleCalcStats} disabled={loadingStats}>
+              {loadingStats ? '計算中...' : '注文実績'}
             </Button>
             <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('xlsx')}>Excel</Button>
             <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('pdf')}>PDF</Button>

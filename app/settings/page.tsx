@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const [deliveryLeadDays, setDeliveryLeadDays] = useState('21');
+  const [mdbPath, setMdbPath] = useState('C:\\Users\\smili\\Documents\\system\\sysdata.mdb');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testSending, setTestSending] = useState(false);
@@ -15,6 +16,7 @@ export default function SettingsPage() {
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(data => {
       if (data.delivery_lead_days) setDeliveryLeadDays(data.delivery_lead_days);
+      if (data.mdb_path) setMdbPath(data.mdb_path);
       setLoading(false);
     });
   }, []);
@@ -24,7 +26,7 @@ export default function SettingsPage() {
     await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ delivery_lead_days: deliveryLeadDays }),
+      body: JSON.stringify({ delivery_lead_days: deliveryLeadDays, mdb_path: mdbPath }),
     });
     toast.success('設定を保存しました');
     setSaving(false);
@@ -75,6 +77,19 @@ export default function SettingsPage() {
               <span className="text-base">日後</span>
             </div>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <Label className="text-base">受注データベースのパス（MDBファイル）</Label>
+          <p className="text-sm text-gray-500 mb-2">
+            注文実績の計算に使用します（ローカルのみ動作）
+          </p>
+          <Input
+            className="text-base h-12"
+            value={mdbPath}
+            onChange={e => setMdbPath(e.target.value)}
+            placeholder="C:\Users\...\sysdata.mdb"
+          />
         </div>
 
         <div className="mt-6">
