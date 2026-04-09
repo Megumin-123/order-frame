@@ -11,7 +11,8 @@
       "Bash(python -c \":*)",
       "Bash(grep -r \"手動送信\\\\|manual.*send\\\\|LINE.*send\" C:UserssmiliOneDriveDesktopcaludezaiko_brasssrcapp --include=*.tsx --include=*.ts)",
       "Bash(gh repo:*)",
-      "Bash(where gh:*)"
+      "Bash(where gh:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

@@ -15,6 +15,7 @@ interface EditItem {
   productName: string; sizeLabel: string; colorLabel: string; colorCode: string;
   frameSizeName: string; specs: string; triggerStock: number; stdOrderQty: number;
   piecesPerBox: number; currentStock: number | null; pendingDelivery: number;
+  pendingDeliveryDetails: { date: string; qty: number }[];
   avgDaily20d: number | null; avgMonthly: number | null;
   deliverySchedules: EditDelivery[]; memo: string;
   category?: string;
@@ -48,6 +49,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       triggerStock: (item.trigger_stock as number) || 0, stdOrderQty: (item.std_order_qty as number) || 0,
       piecesPerBox: (item.pieces_per_box as number) || 1, currentStock: (item.current_stock as number) ?? null,
       pendingDelivery: (item.pending_delivery as number) || 0,
+      pendingDeliveryDetails: (item.pending_delivery_details as { date: string; qty: number }[]) || [],
       avgDaily20d: (item.avg_daily_20d as number) ?? null, avgMonthly: (item.avg_monthly as number) ?? null,
       deliverySchedules: ((item.delivery_schedules as { delivery_date: string; quantity: number }[]) || []).map(ds => ({
         deliveryDate: ds.delivery_date, quantity: ds.quantity,
@@ -151,7 +153,8 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       productName: product.name, sizeLabel: product.size_label, colorLabel: product.color_label,
       colorCode: product.color_code, frameSizeName: product.frame_size_name, specs: product.specs || '',
       triggerStock: product.trigger_stock, stdOrderQty: product.order_quantity,
-      piecesPerBox: product.pieces_per_box, currentStock: null, pendingDelivery: 0, avgDaily20d: null, avgMonthly: null,
+      piecesPerBox: product.pieces_per_box, currentStock: null, pendingDelivery: 0,
+      pendingDeliveryDetails: [], avgDaily20d: null, avgMonthly: null,
       deliverySchedules: [{ deliveryDate: deliveryDateStr, quantity: 0 }], memo: '',
       category: product.category,
     }]);
@@ -278,13 +281,32 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                       {qtyTotal > 0 ? (qtyTotal * item.unitPrice).toLocaleString() : '-'}
                     </td>
                     <td className="text-center text-gray-200" rowSpan={rowCount}>|</td>
-                    <td className="px-1 py-1.5 text-center text-sm text-gray-500 cursor-help" rowSpan={rowCount}
-                      title={item.currentStock !== null ? `現在庫: ${item.currentStock}個\n納品予定: ${item.pendingDelivery}個` : ''}>
+                    <td className="px-1 py-1.5 text-center relative group" rowSpan={rowCount}>
                       {item.currentStock !== null ? (
-                        <span className={item.pendingDelivery > 0 ? 'underline decoration-dotted' : ''}>
+                        <span className="cursor-help text-base font-medium text-gray-700 inline-flex items-center gap-0.5">
                           {item.currentStock + item.pendingDelivery}
+                          {item.pendingDelivery > 0 && <span className="text-blue-500 text-xs">*</span>}
+                          <span className="text-gray-400 text-xs">&#9432;</span>
                         </span>
-                      ) : '-'}
+                      ) : <span className="text-sm text-gray-400">-</span>}
+                      {item.currentStock !== null && (
+                        <div className="hidden group-hover:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
+                          <div className="font-medium mb-1">在庫内訳</div>
+                          <div>現在庫: {item.currentStock}個</div>
+                          {item.pendingDeliveryDetails.length > 0 ? (
+                            <>
+                              <div className="mt-1 font-medium text-blue-300">納品予定:</div>
+                              {item.pendingDeliveryDetails.map((d, i) => (
+                                <div key={i} className="ml-2">{d.date} {d.qty}個</div>
+                              ))}
+                              <div className="mt-1 border-t border-gray-600 pt-1 font-medium">合計: {item.currentStock + item.pendingDelivery}個</div>
+                            </>
+                          ) : (
+                            <div className="text-gray-400 text-xs mt-1">納品予定なし</div>
+                          )}
+                          <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                        </div>
+                      )}
                     </td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.triggerStock}</td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.stdOrderQty}</td>

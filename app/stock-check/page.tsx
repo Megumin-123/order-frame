@@ -13,8 +13,6 @@ interface StockInput {
   avgMonthly: number | null;
 }
 
-const STOCK_OPTIONS = Array.from({ length: 201 }, (_, i) => i);
-
 export default function StockCheckPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [stockInputs, setStockInputs] = useState<Map<number, StockInput>>(new Map());
@@ -96,7 +94,7 @@ export default function StockCheckPage() {
           </div>
         )}
       </div>
-      <p className="text-gray-600 mb-6">各商品の現在庫数を選択してください</p>
+      <p className="text-gray-600 mb-6">各商品の現在庫数を入力してください</p>
 
       <div className="bg-white rounded-lg border overflow-hidden">
         <table className="w-full">
@@ -127,19 +125,18 @@ export default function StockCheckPage() {
                   return (
                     <td key={color.code} className={`px-4 py-3 ${isChanged ? 'bg-orange-100' : color.bgClass}`}>
                       <div className="flex flex-col items-center gap-1">
-                        <select
-                          className={`w-24 h-11 text-center text-base font-medium rounded-md border px-2 cursor-pointer ${
+                        <input
+                          type="number"
+                          min="0"
+                          className={`w-24 h-11 text-center text-base font-medium rounded-md border px-2 ${
                             isChanged
                               ? 'border-orange-500 bg-orange-50 font-bold ring-2 ring-orange-300'
                               : 'border-gray-300 bg-white'
                           }`}
                           value={stock}
-                          onChange={e => updateStock(product.id, parseInt(e.target.value))}
-                        >
-                          {STOCK_OPTIONS.map(n => (
-                            <option key={n} value={n}>{n}</option>
-                          ))}
-                        </select>
+                          onChange={e => updateStock(product.id, parseInt(e.target.value) || 0)}
+                          onFocus={e => e.target.select()}
+                        />
                         {isChanged && (
                           <div className="text-xs text-orange-700 font-bold">
                             前回: {prevStock}
