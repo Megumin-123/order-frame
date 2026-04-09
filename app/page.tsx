@@ -100,10 +100,10 @@ export default function DashboardPage() {
               <table className="w-full">
                 <thead className="sticky top-0">
                   <tr className="bg-gray-50">
-                    <th className="text-left px-3 py-2 font-semibold">納品予定日</th>
-                    <th className="text-left px-3 py-2 font-semibold">商品</th>
-                    <th className="text-right px-3 py-2 font-semibold">数量</th>
-                    <th className="text-left px-3 py-2 font-semibold text-sm">発注番号</th>
+                    <th className="text-left px-2 py-2 font-semibold whitespace-nowrap">納品予定日</th>
+                    <th className="text-left px-2 py-2 font-semibold">商品</th>
+                    <th className="text-right px-2 py-2 font-semibold whitespace-nowrap">数量</th>
+                    <th className="text-center px-1 py-2 w-8"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -113,19 +113,19 @@ export default function DashboardPage() {
                     const isOverdue = d.delivery_date < today;
                     return (
                       <tr key={d.id} className={`border-t ${isOverdue ? 'bg-red-50' : colorStyle.bgClass}`}>
-                        <td className="px-3 py-2 whitespace-nowrap">
+                        <td className="px-2 py-1.5 whitespace-nowrap">
                           {formatDate(d.delivery_date)}
-                          {isToday && <span className="ml-1 px-2 py-0.5 bg-green-500 text-white rounded text-xs font-bold">本日</span>}
-                          {isOverdue && <span className="ml-1 px-2 py-0.5 bg-red-500 text-white rounded text-xs font-bold">遅延</span>}
+                          {isToday && <span className="ml-1 px-1.5 py-0.5 bg-green-500 text-white rounded text-xs font-bold">本日</span>}
+                          {isOverdue && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded text-xs font-bold">遅延</span>}
                         </td>
-                        <td className="px-3 py-2">
-                          <span className={`px-1.5 py-0.5 rounded text-sm ${colorStyle.bgClass} ${colorStyle.textClass} mr-1`}>{d.color_label}</span>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <span className={`px-1 py-0.5 rounded text-sm ${colorStyle.bgClass} ${colorStyle.textClass} mr-1`}>{d.color_label}</span>
                           {d.frame_size_name}（{d.size_label}）
                         </td>
-                        <td className="px-3 py-2 text-right">{d.quantity}個</td>
-                        <td className="px-3 py-2">
-                          <Link href={`/orders/${d.order_id}`} className="text-blue-600 hover:underline text-sm">
-                            {d.order_number}
+                        <td className="px-2 py-1.5 text-right whitespace-nowrap">{d.quantity}個</td>
+                        <td className="px-1 py-1.5 text-center">
+                          <Link href={`/orders/${d.order_id}`} className="text-blue-400 hover:text-blue-600" title={d.order_number}>
+                            📋
                           </Link>
                         </td>
                       </tr>
