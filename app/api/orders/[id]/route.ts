@@ -30,9 +30,21 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     (stockItems || []).forEach(si => stockMap.set(si.product_id, si));
   }
 
+  // Get pending delivery quantities from OTHER orders (not this order)
+  const { data: pendingDeliveries } = await supabase.from('of_delivery_schedules')
+    .select('product_id, quantity')
+    .neq('order_id', parseInt(id))
+    .eq('is_received', 0);
+
+  const pendingMap = new Map<number, number>();
+  (pendingDeliveries || []).forEach(d => {
+    pendingMap.set(d.product_id, (pendingMap.get(d.product_id) || 0) + d.quantity);
+  });
+
   const itemsWithDeliveries = (items || []).map(item => {
     const p = item.of_products;
     const stock = stockMap.get(item.product_id);
+    const pendingQty = pendingMap.get(item.product_id) || 0;
     return {
       ...item, of_products: undefined,
       product_name: p.name, size_label: p.size_label, color_label: p.color_label,
@@ -41,6 +53,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       pieces_per_box: p.pieces_per_box, category: p.category,
       delivery_schedules: deliveryMap.get(item.id) || [],
       current_stock: stock?.current_stock ?? null,
+      pending_delivery: pendingQty,
       avg_daily_20d: stock?.avg_daily_20d ?? null,
       avg_monthly: stock?.avg_monthly ?? null,
     };

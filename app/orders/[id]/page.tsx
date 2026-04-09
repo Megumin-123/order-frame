@@ -14,8 +14,9 @@ interface EditItem {
   productId: number; quantity: number; unitPrice: number;
   productName: string; sizeLabel: string; colorLabel: string; colorCode: string;
   frameSizeName: string; specs: string; triggerStock: number; stdOrderQty: number;
-  piecesPerBox: number; currentStock: number | null; avgDaily20d: number | null;
-  avgMonthly: number | null; deliverySchedules: EditDelivery[]; memo: string;
+  piecesPerBox: number; currentStock: number | null; pendingDelivery: number;
+  avgDaily20d: number | null; avgMonthly: number | null;
+  deliverySchedules: EditDelivery[]; memo: string;
   category?: string;
 }
 
@@ -46,6 +47,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       frameSizeName: item.frame_size_name as string, specs: (item.specs as string) || '',
       triggerStock: (item.trigger_stock as number) || 0, stdOrderQty: (item.std_order_qty as number) || 0,
       piecesPerBox: (item.pieces_per_box as number) || 1, currentStock: (item.current_stock as number) ?? null,
+      pendingDelivery: (item.pending_delivery as number) || 0,
       avgDaily20d: (item.avg_daily_20d as number) ?? null, avgMonthly: (item.avg_monthly as number) ?? null,
       deliverySchedules: ((item.delivery_schedules as { delivery_date: string; quantity: number }[]) || []).map(ds => ({
         deliveryDate: ds.delivery_date, quantity: ds.quantity,
@@ -149,7 +151,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
       productName: product.name, sizeLabel: product.size_label, colorLabel: product.color_label,
       colorCode: product.color_code, frameSizeName: product.frame_size_name, specs: product.specs || '',
       triggerStock: product.trigger_stock, stdOrderQty: product.order_quantity,
-      piecesPerBox: product.pieces_per_box, currentStock: null, avgDaily20d: null, avgMonthly: null,
+      piecesPerBox: product.pieces_per_box, currentStock: null, pendingDelivery: 0, avgDaily20d: null, avgMonthly: null,
       deliverySchedules: [{ deliveryDate: deliveryDateStr, quantity: 0 }], memo: '',
       category: product.category,
     }]);
@@ -211,7 +213,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <col style={{width:'65px'}} />{/* 単価 */}
             <col style={{width:'85px'}} />{/* 小計 */}
             <col style={{width:'6px'}} />{/* 区切り */}
-            <col style={{width:'48px'}} />{/* 現在庫 */}
+            <col style={{width:'55px'}} />{/* 有効在庫 */}
             <col style={{width:'48px'}} />{/* 下限値 */}
             <col style={{width:'48px'}} />{/* 補充数 */}
             <col style={{width:'48px'}} />{/* 入数/箱 */}
@@ -225,7 +227,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               <th className="text-right px-2 py-2 font-semibold">単価</th>
               <th className="text-right px-2 py-2 font-semibold">小計</th>
               <th className="py-2"></th>
-              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">現在庫</th>
+              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500" title="現在庫 + 他の発注の未納品数">有効在庫</th>
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">下限値</th>
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">補充数</th>
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">入数/箱</th>
@@ -276,8 +278,13 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                       {qtyTotal > 0 ? (qtyTotal * item.unitPrice).toLocaleString() : '-'}
                     </td>
                     <td className="text-center text-gray-200" rowSpan={rowCount}>|</td>
-                    <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>
-                      {item.currentStock !== null ? item.currentStock : '-'}
+                    <td className="px-1 py-1.5 text-center text-sm text-gray-500 cursor-help" rowSpan={rowCount}
+                      title={item.currentStock !== null ? `現在庫: ${item.currentStock}個\n納品予定: ${item.pendingDelivery}個` : ''}>
+                      {item.currentStock !== null ? (
+                        <span className={item.pendingDelivery > 0 ? 'underline decoration-dotted' : ''}>
+                          {item.currentStock + item.pendingDelivery}
+                        </span>
+                      ) : '-'}
                     </td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.triggerStock}</td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.stdOrderQty}</td>
