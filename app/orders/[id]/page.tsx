@@ -369,7 +369,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                                 <div className="hidden group-hover/stats:block absolute z-50 right-full mr-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
                                   <div className="font-medium">30日間の注文数: {count}個</div>
                                   <div className="text-gray-300 text-xs mt-1">{statsPeriod.from} ～ {statsPeriod.to}</div>
-                                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
+                                  <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
                                 </div>
                               )}
                             </>
