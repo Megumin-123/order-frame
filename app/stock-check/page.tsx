@@ -83,7 +83,7 @@ export default function StockCheckPage() {
 
   const handlePrintCheckSheet = () => {
     const today = new Date().toLocaleDateString('ja-JP');
-    const colorHeaders = COLOR_OPTIONS.map(c => `<th style="padding:8px 16px;text-align:center;background:${
+    const colorHeaders = COLOR_OPTIONS.map(c => `<th style="padding:8px 16px;text-align:center;border:1px solid #ddd;background:${
       c.code === 'YELLOW_OAK' ? '#fef3c7' : c.code === 'BROWN' ? '#dbc8a8' : '#e0f2fe'
     };font-weight:bold;">${c.label}</th>`).join('');
 

@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { COLOR_OPTIONS, ORDER_STATUS } from '@/lib/constants';
 import type { Order, DeliveryScheduleWithProduct } from '@/lib/types';
 
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
 function formatDate(dateStr: string): string {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -13,9 +15,11 @@ function formatDate(dateStr: string): string {
   const year = parseInt(parts[0]);
   const month = parseInt(parts[1]);
   const day = parseInt(parts[2]);
+  const d = new Date(year, month - 1, day);
+  const weekday = WEEKDAYS[d.getDay()];
   const currentYear = new Date().getFullYear();
-  if (year !== currentYear) return `${year}/${month}/${day}`;
-  return `${month}/${day}`;
+  if (year !== currentYear) return `${year}/${month}/${day}(${weekday})`;
+  return `${month}/${day}(${weekday})`;
 }
 
 function getTodayStr(): string {
@@ -108,11 +112,11 @@ export default function DashboardPage() {
                     const isToday = d.delivery_date === today;
                     const isOverdue = d.delivery_date < today;
                     return (
-                      <tr key={d.id} className={`border-t ${isOverdue ? 'bg-red-50' : isToday ? 'bg-green-50' : colorStyle.bgClass}`}>
+                      <tr key={d.id} className={`border-t ${isOverdue ? 'bg-red-50' : colorStyle.bgClass}`}>
                         <td className="px-3 py-2 whitespace-nowrap">
                           {formatDate(d.delivery_date)}
-                          {isToday && <span className="ml-1 px-1.5 py-0.5 bg-green-200 text-green-800 rounded text-xs font-medium">本日</span>}
-                          {isOverdue && <span className="ml-1 px-1.5 py-0.5 bg-red-200 text-red-800 rounded text-xs font-medium">遅延</span>}
+                          {isToday && <span className="ml-1 px-2 py-0.5 bg-green-500 text-white rounded text-xs font-bold">本日</span>}
+                          {isOverdue && <span className="ml-1 px-2 py-0.5 bg-red-500 text-white rounded text-xs font-bold">遅延</span>}
                         </td>
                         <td className="px-3 py-2">
                           <span className={`px-1.5 py-0.5 rounded text-sm ${colorStyle.bgClass} ${colorStyle.textClass} mr-1`}>{d.color_label}</span>

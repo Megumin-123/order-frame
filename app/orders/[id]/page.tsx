@@ -354,8 +354,9 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                     {orderStats && (
                       <td className="px-1 py-1.5 text-center relative group/stats" rowSpan={rowCount}>
                         {(() => {
-                          const sizeMap: Record<string, string> = { SS:'SS', S:'S', M:'M', M_PLUS:'M_PLUS', L:'L', LL:'LL' };
-                          const sizeCode = Object.entries(sizeMap).find(([, v]) => v === item.sizeLabel.replace('mini(SS)','SS').replace('Sサイズ','S').replace('Mサイズ','M').replace('Mプラス','M_PLUS').replace('Lサイズ','L').replace('LLサイズ','LL'))?.[1];
+                          // frameSizeName -> sizeCode mapping
+                          const frameSizeToCode: Record<string, string> = { 'SS':'SS', 'インチ':'S', '太子':'M', '四切':'M_PLUS', '大衣':'L', 'F10':'LL' };
+                          const sizeCode = frameSizeToCode[item.frameSizeName];
                           const colorMap: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
                           const colorCode = colorMap[item.colorLabel] || 'YELLOW_OAK';
                           const count = sizeCode && orderStats[sizeCode] ? orderStats[sizeCode][colorCode] || 0 : 0;

@@ -1,7 +1,7 @@
 export const TAX_RATE = 0.10;
 
 export const SIZE_OPTIONS = [
-  { code: 'SS', label: 'mini(SS)', frameName: 'SS' },
+  { code: 'SS', label: 'ミニサイズ', frameName: 'SS' },
   { code: 'S', label: 'Sサイズ', frameName: 'インチ' },
   { code: 'M', label: 'Mサイズ', frameName: '太子' },
   { code: 'M_PLUS', label: 'Mプラス', frameName: '四切' },
