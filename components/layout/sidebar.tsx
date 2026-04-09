@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -26,9 +27,11 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 min-h-screen bg-white border-r border-gray-200 flex flex-col shrink-0">
-      <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-gray-900">額縁発注管理</h1>
-        <p className="text-sm text-gray-500 mt-1">ハッピービジョン</p>
+      <div className="px-4 pt-5 pb-4 border-b border-gray-200">
+        <div className="flex justify-center mb-2">
+          <Image src="/logo.jpg" alt="KAWAII ART" width={80} height={100} className="object-contain" />
+        </div>
+        <h1 className="text-lg font-bold text-gray-800 text-center tracking-wide">発注管理</h1>
       </div>
       <nav className="flex-1 p-4 space-y-2">
         {mainNavItems.map((item) => {
@@ -77,6 +80,9 @@ export function Sidebar() {
           </div>
         )}
       </nav>
+      <div className="p-4 border-t border-gray-100">
+        <p className="text-center text-xs tracking-widest text-gray-400 uppercase">Happy Vision</p>
+      </div>
     </aside>
   );
 }

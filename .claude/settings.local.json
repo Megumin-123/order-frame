@@ -27,7 +27,8 @@
       "Bash(node -e \"console.log\\('node ok'\\)\")",
       "Bash(cmd //c \"taskkill /PID 24400 /F\")",
       "Bash(npm uninstall:*)",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(ls -la \"C:\\\\Users\\\\smili\\\\OneDrive\\\\Desktop\\\\claude_siryo\"/*logo* \"C:\\\\Users\\\\smili\\\\OneDrive\\\\Desktop\\\\claude_siryo\"/*KAWAII* \"C:\\\\Users\\\\smili\\\\OneDrive\\\\Desktop\\\\claude_siryo\"/*kawaii*)"
     ]
   }
 }
