@@ -252,7 +252,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <col style={{width:'6px'}} />{/* 区切り */}
             <col style={{width:'55px'}} />{/* 有効在庫 */}
             {orderStats && <col style={{width:'55px'}} />}{/* 30日注文 */}
-            {orderStats && <col style={{width:'55px'}} />}{/* 月内注文 */}
+            {orderStats && <col style={{width:'55px'}} />}{/* 当月予測 */}
             <col style={{width:'48px'}} />{/* 下限値 */}
             <col style={{width:'48px'}} />{/* 補充数 */}
             <col style={{width:'48px'}} />{/* 入数/箱 */}
@@ -271,7 +271,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                 <>
                   <th className="text-center px-1 py-2 text-sm font-semibold text-red-600"
                     title={statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数` : ''}>30日注文</th>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-red-600">月内注文</th>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-red-600">当月予測</th>
                 </>
               )}
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">下限値</th>
@@ -364,7 +364,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                           const colorMap: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
                           const colorCode = colorMap[item.colorLabel] || 'YELLOW_OAK';
                           const count = sizeCode && orderStats[sizeCode] ? orderStats[sizeCode][colorCode] || 0 : 0;
-                          // 月内注文を計算: 30日注文÷30×月末までの日数
+                          // 当月予測を計算: 30日注文÷30×月末までの日数
                           let monthlyEstimate = 0;
                           let monthEndDate = '';
                           if (statsPeriod && count > 0) {
@@ -403,23 +403,35 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                           let estimate = 0;
                           let periodFrom = '';
                           let periodTo = '';
-                          if (statsPeriod && cnt > 0) {
-                            const fp = statsPeriod.from.split('-');
-                            const fd = new Date(parseInt(fp[0]), parseInt(fp[1]) - 1, parseInt(fp[2]));
-                            const ld = new Date(fd.getFullYear(), fd.getMonth() + 1, 0);
-                            const days = Math.max(1, Math.ceil((ld.getTime() - fd.getTime()) / (1000*60*60*24)) + 1);
-                            estimate = Math.round(cnt / 30 * days);
-                            periodFrom = statsPeriod.from;
-                            periodTo = `${fd.getFullYear()}-${String(fd.getMonth()+1).padStart(2,'0')}-${ld.getDate()}`;
+                          if (cnt > 0) {
+                            // 今年の納品日から月末までの日数で計算
+                            let delDate = '';
+                            for (const it of items) {
+                              for (const ds of it.deliverySchedules) {
+                                if (ds.deliveryDate && (!delDate || ds.deliveryDate < delDate)) delDate = ds.deliveryDate;
+                              }
+                            }
+                            if (delDate) {
+                              const dp = delDate.split('-');
+                              const dd = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]));
+                              const lastDay = new Date(dd.getFullYear(), dd.getMonth() + 1, 0);
+                              const daysToEnd = Math.max(1, Math.ceil((lastDay.getTime() - dd.getTime()) / (1000*60*60*24)) + 1);
+                              estimate = Math.round(cnt / 30 * daysToEnd);
+                              periodFrom = delDate;
+                              periodTo = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${lastDay.getDate()}`;
+                            }
                           }
+                          const hasDelivery = item.deliverySchedules.some(ds => ds.deliveryDate && ds.quantity > 0);
                           return (
                             <>
-                              <span className={`text-base font-medium cursor-help ${estimate > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                                {estimate}
-                              </span>
-                              {statsPeriod && estimate > 0 && (
+                              {hasDelivery ? (
+                                <span className={`text-base font-medium cursor-help ${estimate > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                                  {estimate}
+                                </span>
+                              ) : <span className="text-gray-300">-</span>}
+                              {hasDelivery && statsPeriod && estimate > 0 && (
                                 <div className="hidden group-hover/monthly:block absolute z-50 right-full mr-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
-                                  <div className="font-medium">月内予測注文数: {estimate}個</div>
+                                  <div className="font-medium">当月予測注文数: {estimate}個</div>
                                   <div className="text-gray-300 text-xs mt-1">{periodFrom} ～ {periodTo}</div>
                                   <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
                                 </div>
