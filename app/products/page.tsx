@@ -163,11 +163,26 @@ export default function ProductsPage() {
           <DialogHeader><DialogTitle className="text-xl">商品編集</DialogTitle></DialogHeader>
           {editProduct && (
             <div className="space-y-4">
-              <div>
-                <Label className="text-base">商品名</Label>
-                <Input className="text-base h-12 mt-1" value={editProduct.name}
-                  onChange={e => setEditProduct({ ...editProduct, name: e.target.value })} />
-              </div>
+              {editProduct.category === 'frame' ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-base">サイズ</Label>
+                    <Input className="text-base h-12 mt-1" value={editProduct.size_label}
+                      onChange={e => setEditProduct({ ...editProduct, size_label: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label className="text-base">額サイズ</Label>
+                    <Input className="text-base h-12 mt-1" value={editProduct.frame_size_name}
+                      onChange={e => setEditProduct({ ...editProduct, frame_size_name: e.target.value })} />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Label className="text-base">商品名</Label>
+                  <Input className="text-base h-12 mt-1" value={editProduct.name}
+                    onChange={e => setEditProduct({ ...editProduct, name: e.target.value })} />
+                </div>
+              )}
               <div>
                 <Label className="text-base">単価(税抜)</Label>
                 <Input type="number" className="text-base h-12 mt-1" value={editProduct.unit_price}
@@ -179,7 +194,7 @@ export default function ProductsPage() {
                   value={editProduct.specs || ''}
                   onChange={e => setEditProduct({ ...editProduct, specs: e.target.value })} />
               </div>
-              {editProduct.category === 'frame' && (
+              {editProduct.category === 'frame' ? (
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label className="text-base">在庫下限値</Label>
@@ -197,8 +212,7 @@ export default function ProductsPage() {
                       onChange={e => setEditProduct({ ...editProduct, pieces_per_box: parseInt(e.target.value) || 1 })} />
                   </div>
                 </div>
-              )}
-              {editProduct.category === 'other' && (
+              ) : (
                 <div>
                   <Label className="text-base">入数/箱</Label>
                   <Input type="number" className="text-base h-12 mt-1" value={editProduct.pieces_per_box}

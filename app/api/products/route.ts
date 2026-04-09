@@ -22,6 +22,7 @@ export async function PUT(request: Request) {
   const product = await request.json();
   await supabase.from('of_products').update({
     name: product.name, unit_price: product.unit_price, specs: product.specs,
+    size_label: product.size_label, frame_size_name: product.frame_size_name,
     pieces_per_box: product.pieces_per_box, classification_code: product.classification_code,
     trigger_stock: product.trigger_stock, order_quantity: product.order_quantity, updated_at: new Date().toISOString(),
   }).eq('id', product.id);
