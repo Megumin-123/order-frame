@@ -335,15 +335,18 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                       {item.currentStock !== null && (
                         <div className="hidden group-hover:block absolute z-50 right-full mr-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
                           <div>現在庫: {item.currentStock}個</div>
-                          {item.pendingDeliveryDetails.length > 0 && (
-                            <div className="mt-1">
-                              {item.pendingDeliveryDetails.map((d, i) => {
-                                const parts = d.date.split('-');
-                                const short = parts.length === 3 ? `${parseInt(parts[1])}/${parseInt(parts[2])}` : d.date;
-                                return <span key={i} className="mr-2">{short}:{d.qty}個</span>;
-                              })}
-                            </div>
-                          )}
+                          {(() => {
+                            const valid = item.pendingDeliveryDetails.filter(d => d.qty > 0);
+                            return valid.length > 0 ? (
+                              <div className="mt-1">
+                                {valid.map((d, i) => {
+                                  const parts = d.date.split('-');
+                                  const short = parts.length === 3 ? `${parseInt(parts[1])}/${parseInt(parts[2])}` : d.date;
+                                  return <span key={i} className="mr-2">{short}:{d.qty}個</span>;
+                                })}
+                              </div>
+                            ) : null;
+                          })()}
                           <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
                         </div>
                       )}
