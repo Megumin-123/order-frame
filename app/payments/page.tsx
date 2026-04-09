@@ -47,14 +47,64 @@ export default function PaymentsPage() {
     });
   }, []);
 
+  const handlePrintList = () => {
+    const today = new Date().toLocaleDateString('ja-JP');
+    const summaryRows = payments.map(pm => `<tr>
+      <td style="border:1px solid #999;padding:6px;font-weight:bold">${formatPaymentMonth(pm.month)}</td>
+      <td style="border:1px solid #999;padding:6px">${pm.paymentDate}</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right">${pm.total.toLocaleString()}円</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right">${pm.tax.toLocaleString()}円</td>
+      <td style="border:1px solid #999;padding:6px;text-align:right;font-weight:bold">${pm.totalWithTax.toLocaleString()}円</td>
+    </tr>`).join('');
+
+    const detailSections = payments.map(pm => {
+      const detailRows = pm.items.map(item => `<tr>
+        <td style="border:1px solid #ccc;padding:4px">${item.deliveryDate}</td>
+        <td style="border:1px solid #ccc;padding:4px">${item.colorLabel}</td>
+        <td style="border:1px solid #ccc;padding:4px">${item.frameSizeName}</td>
+        <td style="border:1px solid #ccc;padding:4px;text-align:right">${item.quantity}</td>
+        <td style="border:1px solid #ccc;padding:4px;text-align:right">${item.unitPrice.toLocaleString()}</td>
+        <td style="border:1px solid #ccc;padding:4px;text-align:right">${item.subtotal.toLocaleString()}</td>
+        <td style="border:1px solid #ccc;padding:4px;text-align:center">${item.isReceived ? '済' : '予定'}</td>
+      </tr>`).join('');
+      return `<h3 style="margin-top:20px">${formatPaymentMonth(pm.month)}（支払期日: ${pm.paymentDate}）</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f0f0f0">
+      <th style="border:1px solid #ccc;padding:4px">納品日</th><th style="border:1px solid #ccc;padding:4px">色</th>
+      <th style="border:1px solid #ccc;padding:4px">商品名</th><th style="border:1px solid #ccc;padding:4px">数量</th>
+      <th style="border:1px solid #ccc;padding:4px">単価</th><th style="border:1px solid #ccc;padding:4px">小計</th>
+      <th style="border:1px solid #ccc;padding:4px">状態</th></tr></thead><tbody>${detailRows}</tbody>
+      <tfoot><tr style="background:#f5f5f5"><td colspan="5" style="border:1px solid #ccc;padding:4px;text-align:right;font-weight:bold">税込合計:</td>
+      <td style="border:1px solid #ccc;padding:4px;text-align:right;font-weight:bold">${pm.totalWithTax.toLocaleString()}円</td><td></td></tr></tfoot></table>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>支払一覧表</title>
+<style>body{font-family:'MS Gothic',sans-serif;margin:30px;font-size:13px}table{border-collapse:collapse;width:100%}
+@media print{body{margin:15mm}}</style></head>
+<body><h2 style="text-align:center">支払一覧表</h2>
+<p style="text-align:right">印刷日: ${today}</p>
+<p style="font-size:12px;color:#666">末締め翌月末払い（納品予定分も含む）</p>
+<table><thead><tr style="background:#f0f0f0">
+<th style="border:1px solid #999;padding:6px;text-align:left">支払月</th>
+<th style="border:1px solid #999;padding:6px;text-align:left">支払期日</th>
+<th style="border:1px solid #999;padding:6px;text-align:right">税抜合計</th>
+<th style="border:1px solid #999;padding:6px;text-align:right">消費税</th>
+<th style="border:1px solid #999;padding:6px;text-align:right">税込合計</th>
+</tr></thead><tbody>${summaryRows}</tbody></table>
+${detailSections}
+<script>window.print();</script></body></html>`;
+
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
   if (loading) return <div className="text-center py-12 text-lg">読み込み中...</div>;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">支払一覧</h1>
-        <Button variant="outline" className="text-base h-10 px-4" onClick={() => window.print()}>
-          印刷
+        <Button className="text-base h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white" onClick={handlePrintList}>
+          支払一覧表
         </Button>
       </div>
 

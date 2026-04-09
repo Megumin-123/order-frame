@@ -99,6 +99,47 @@ export default function DeliveriesPage() {
 
   const getColorStyle = (code: string) => COLOR_OPTIONS.find(c => c.code === code) || COLOR_OPTIONS[0];
 
+  const handlePrintList = () => {
+    const today = new Date().toLocaleDateString('ja-JP');
+    const rows = deliveries.map(d => {
+      const dd = d.delivery_date || '';
+      const parts = dd.split('-');
+      let dateWithDay = dd;
+      if (parts.length === 3) {
+        const dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        dateWithDay = `${dd} (${WEEKDAYS[dt.getDay()]})`;
+      }
+      return `<tr>
+        <td style="border:1px solid #999;padding:6px;white-space:nowrap">${dateWithDay}</td>
+        <td style="border:1px solid #999;padding:6px">${d.color_label}</td>
+        <td style="border:1px solid #999;padding:6px">${d.frame_size_name}（${d.size_label}）</td>
+        <td style="border:1px solid #999;padding:6px;text-align:right">${d.quantity}個</td>
+        <td style="border:1px solid #999;padding:6px;text-align:center">${d.is_received ? '済' : '未'}</td>
+        <td style="border:1px solid #999;padding:6px">${d.memo || ''}</td>
+        <td style="border:1px solid #999;padding:6px;font-size:11px;color:#888">${d.order_number}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>納品一覧表</title>
+<style>body{font-family:'MS Gothic',sans-serif;margin:30px;font-size:13px}table{border-collapse:collapse;width:100%}
+@media print{@page{size:landscape}body{margin:10mm}}</style></head>
+<body><h2 style="text-align:center">納品一覧表</h2>
+<p style="text-align:right">印刷日: ${today}</p>
+<table><thead><tr style="background:#f0f0f0">
+<th style="border:1px solid #999;padding:6px;text-align:left">納品予定日</th>
+<th style="border:1px solid #999;padding:6px;text-align:left">色</th>
+<th style="border:1px solid #999;padding:6px;text-align:left">商品名</th>
+<th style="border:1px solid #999;padding:6px;text-align:right">予定数</th>
+<th style="border:1px solid #999;padding:6px;text-align:center">状態</th>
+<th style="border:1px solid #999;padding:6px;text-align:left">備考</th>
+<th style="border:1px solid #999;padding:6px;text-align:left">発注番号</th>
+</tr></thead><tbody>${rows}</tbody></table>
+<script>window.print();</script></body></html>`;
+
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
   const groupedByDate = new Map<string, DeliveryScheduleWithProduct[]>();
   deliveries.forEach(d => { const list = groupedByDate.get(d.delivery_date) || []; list.push(d); groupedByDate.set(d.delivery_date, list); });
   const sortedDates = Array.from(groupedByDate.keys()).sort();
@@ -107,8 +148,8 @@ export default function DeliveriesPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">納品一覧</h1>
-        <Button variant="outline" className="text-base h-10 px-4" onClick={() => window.print()}>
-          印刷
+        <Button className="text-base h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white" onClick={handlePrintList}>
+          納品一覧表
         </Button>
       </div>
 
