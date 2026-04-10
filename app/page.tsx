@@ -103,7 +103,7 @@ export default function DashboardPage() {
                     <th className="text-left px-2 py-2 font-semibold whitespace-nowrap">納品予定日</th>
                     <th className="text-left px-2 py-2 font-semibold">商品</th>
                     <th className="text-right px-2 py-2 font-semibold whitespace-nowrap">数量</th>
-                    <th className="text-center px-1 py-2 w-8"></th>
+                    <th className="text-left px-2 py-2 text-xs text-gray-400 whitespace-nowrap">発注番号</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -123,9 +123,9 @@ export default function DashboardPage() {
                           {d.frame_size_name}（{d.size_label}）
                         </td>
                         <td className="px-2 py-1.5 text-right whitespace-nowrap">{d.quantity}個</td>
-                        <td className="px-1 py-1.5 text-center">
-                          <Link href={`/orders/${d.order_id}`} className="text-blue-400 hover:text-blue-600" title={d.order_number}>
-                            📋
+                        <td className="px-2 py-1.5">
+                          <Link href={`/orders/${d.order_id}`} className="text-xs text-gray-400 hover:text-blue-600 hover:underline">
+                            {d.order_number}
                           </Link>
                         </td>
                       </tr>
@@ -155,9 +155,9 @@ export default function DashboardPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="text-left px-4 py-2 font-semibold">発注番号</th>
                     <th className="text-left px-4 py-2 font-semibold">発注日</th>
-                    <th className="text-center px-4 py-2 font-semibold">状態</th>
+                    <th className="text-left px-4 py-2 font-semibold">発注番号</th>
+                    <th className="text-center px-4 py-2 font-semibold">納品状況</th>
                     <th className="text-right px-4 py-2 font-semibold">合計</th>
                   </tr>
                 </thead>
@@ -166,12 +166,12 @@ export default function DashboardPage() {
                     const st = ORDER_STATUS[order.status as keyof typeof ORDER_STATUS] || ORDER_STATUS.draft;
                     return (
                       <tr key={order.id} className="border-t">
+                        <td className="px-4 py-2">{formatDate(order.order_date)}</td>
                         <td className="px-4 py-2">
                           <Link href={`/orders/${order.id}`} className="text-blue-600 hover:underline">
                             {order.order_number}
                           </Link>
                         </td>
-                        <td className="px-4 py-2">{formatDate(order.order_date)}</td>
                         <td className="px-4 py-2 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${st.color}`}>
                             {st.label}
