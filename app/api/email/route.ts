@@ -87,12 +87,16 @@ export async function POST(request: Request) {
     const html = await generatePdfHtml(orderId);
 
     // Create transporter
+    const crypto = await import('crypto');
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: false,
       auth: { user: smtpUser, pass: smtpPass },
-      tls: { rejectUnauthorized: false },
+      tls: {
+        rejectUnauthorized: false,
+        secureContext: crypto.createSecureContext({ securityLevel: 0 }),
+      },
     });
 
     // Send email with HTML attachment
