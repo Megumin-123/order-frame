@@ -122,7 +122,12 @@ export default function DashboardPage() {
                           <span className={`px-1 py-0.5 rounded text-sm ${colorStyle.bgClass} ${colorStyle.textClass} mr-1`}>{d.color_label}</span>
                           {d.frame_size_name}（{d.size_label}）
                         </td>
-                        <td className="px-2 py-1.5 text-right whitespace-nowrap">{d.quantity}個</td>
+                        <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                          {d.quantity}個
+                          {d.received_quantity != null && d.received_quantity > 0 && d.received_quantity < d.quantity && (
+                            <span className="ml-1 text-xs text-orange-600 font-bold">({d.received_quantity}個済)</span>
+                          )}
+                        </td>
                         <td className="px-2 py-1.5">
                           <Link href={`/orders/${d.order_id}`} className="text-xs text-gray-400 hover:text-blue-600 hover:underline">
                             {d.order_number}

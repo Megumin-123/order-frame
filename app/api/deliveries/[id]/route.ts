@@ -20,7 +20,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   // Full receive/unreceive
   await supabase.from('of_delivery_schedules').update({
     is_received: data.isReceived ? 1 : 0,
-    received_at: data.isReceived ? (data.receivedAt || new Date().toISOString()) : null,
+    received_at: (data.isReceived || data.receivedQuantity) ? (data.receivedAt || new Date().toISOString()) : null,
+    received_quantity: data.receivedQuantity !== undefined ? data.receivedQuantity : null,
     updated_at: new Date().toISOString(),
   }).eq('id', id);
 

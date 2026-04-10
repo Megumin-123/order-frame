@@ -39,6 +39,8 @@ export default function DeliveriesPage() {
   const [editMemoText, setEditMemoText] = useState('');
   const [editDateId, setEditDateId] = useState<number | null>(null);
   const [editDateText, setEditDateText] = useState('');
+  const [editReceiveId, setEditReceiveId] = useState<number | null>(null);
+  const [editReceiveQty, setEditReceiveQty] = useState(0);
 
   const fetchDeliveries = async () => {
     const params = new URLSearchParams();
@@ -54,26 +56,43 @@ export default function DeliveriesPage() {
 
   useEffect(() => { fetchDeliveries(); }, [dateFrom, dateTo, filterColor, filterStatus]);
 
-  const handleReceive = async (id: number) => {
-    await fetch(`/api/deliveries/${id}`, {
+  const handleStartReceive = (id: number, qty: number) => {
+    setEditReceiveId(id);
+    setEditReceiveQty(qty); // デフォルトは予定数
+  };
+
+  const handleConfirmReceive = async () => {
+    if (editReceiveId === null) return;
+    const delivery = deliveries.find(d => d.id === editReceiveId);
+    if (!delivery) return;
+    const isFullReceive = editReceiveQty >= delivery.quantity;
+    await fetch(`/api/deliveries/${editReceiveId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isReceived: true, receivedAt: todayStr() }),
+      body: JSON.stringify({
+        isReceived: isFullReceive, receivedAt: todayStr(),
+        receivedQuantity: editReceiveQty,
+      }),
     });
-    toast.success('納品を登録しました');
-    // 画面に残すためリロードせず、ローカルのデータだけ更新
+    toast.success(isFullReceive ? '納品を登録しました' : `${editReceiveQty}個を納品登録しました（残${delivery.quantity - editReceiveQty}個）`);
     setDeliveries(prev => prev.map(d =>
-      d.id === id ? { ...d, is_received: 1, received_at: todayStr() } : d
+      d.id === editReceiveId ? {
+        ...d,
+        is_received: isFullReceive ? 1 : 0,
+        received_at: todayStr(),
+        received_quantity: editReceiveQty,
+      } : d
     ));
+    setEditReceiveId(null);
   };
 
   const handleUnreceive = async (id: number) => {
     await fetch(`/api/deliveries/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isReceived: false }),
+      body: JSON.stringify({ isReceived: false, receivedQuantity: null }),
     });
     toast.success('納品登録を取り消しました');
     setDeliveries(prev => prev.map(d =>
-      d.id === id ? { ...d, is_received: 0, received_at: null } : d
+      d.id === id ? { ...d, is_received: 0, received_at: null, received_quantity: null } : d
     ));
   };
 
@@ -216,6 +235,7 @@ export default function DeliveriesPage() {
                       <th className="text-left px-4 py-2 font-semibold whitespace-nowrap">色</th>
                       <th className="text-left px-4 py-2 font-semibold whitespace-nowrap">商品名</th>
                       <th className="text-right px-4 py-2 font-semibold whitespace-nowrap">予定数</th>
+                      <th className="text-right px-4 py-2 font-semibold whitespace-nowrap">納品数</th>
                       <th className="text-left px-4 py-2 font-semibold whitespace-nowrap" style={{width:'40%'}}>備考</th>
                       <th className="text-left px-3 py-2 text-xs text-gray-400 font-normal whitespace-nowrap">発注番号</th>
                     </tr>
@@ -231,12 +251,22 @@ export default function DeliveriesPage() {
                           className={`border-t hover:bg-gray-50/50 ${colorStyle.bgClass}`}
                           style={item.is_received ? { borderLeft: '4px solid #22c55e' } : {}}>
                           <td className="px-3 py-2 text-center">
-                            {item.is_received ? (
+                            {editReceiveId === item.id ? (
+                              <div className="flex flex-col gap-1 items-center">
+                                <div className="flex items-center gap-1">
+                                  <Input type="number" className="w-16 h-8 text-sm text-center" value={editReceiveQty}
+                                    onChange={e => setEditReceiveQty(parseInt(e.target.value) || 0)} />
+                                  <Button size="sm" className="text-xs h-8 px-2" onClick={handleConfirmReceive}>確定</Button>
+                                </div>
+                                <Button variant="ghost" size="sm" className="text-xs h-6 text-gray-400"
+                                  onClick={() => setEditReceiveId(null)}>キャンセル</Button>
+                              </div>
+                            ) : item.is_received ? (
                               <Button variant="outline" size="sm" className="text-xs h-8"
                                 onClick={() => handleUnreceive(item.id)}>取消</Button>
                             ) : (
                               <Button size="sm" className="text-sm h-8"
-                                onClick={() => handleReceive(item.id)}>納品登録</Button>
+                                onClick={() => handleStartReceive(item.id, item.quantity)}>納品登録</Button>
                             )}
                           </td>
                           <td className="px-3 py-2 text-center whitespace-nowrap">
@@ -265,6 +295,14 @@ export default function DeliveriesPage() {
                           </td>
                           <td className="px-4 py-2 font-medium whitespace-nowrap">{item.frame_size_name}（{item.size_label}）</td>
                           <td className="px-4 py-2 text-right font-medium whitespace-nowrap">{item.quantity}個</td>
+                          <td className="px-4 py-2 text-right whitespace-nowrap">
+                            {item.received_quantity != null ? (
+                              <span className={item.received_quantity < item.quantity ? 'text-red-600 font-bold' : 'font-medium'}>
+                                {item.received_quantity}個
+                                {item.received_quantity < item.quantity && <span className="text-xs ml-1">（残{item.quantity - item.received_quantity}）</span>}
+                              </span>
+                            ) : <span className="text-gray-300">-</span>}
+                          </td>
                           <td className="px-4 py-2">
                             {isEditingMemo ? (
                               <div className="flex items-center gap-1">
