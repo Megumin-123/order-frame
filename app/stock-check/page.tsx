@@ -155,11 +155,9 @@ export default function StockCheckPage() {
                   if (!product) return <td key={color.code} />;
                   const input = stockInputs.get(product.id);
                   const stock = input?.currentStock || 0;
-                  const prevStock = prevStockValues.get(product.id) ?? 0;
-                  const isChanged = stock !== prevStock;
                   const isBelowLimit = product.auto_order && product.trigger_stock > 0 && stock <= product.trigger_stock;
                   return (
-                    <td key={color.code} className={`px-4 py-3 ${isBelowLimit ? 'bg-red-50' : isChanged ? 'bg-orange-100' : color.bgClass}`}>
+                    <td key={color.code} className={`px-4 py-3 ${isBelowLimit ? 'bg-red-50' : color.bgClass}`}>
                       <div className="flex flex-col items-center gap-1">
                         <input
                           type="number"
@@ -167,9 +165,7 @@ export default function StockCheckPage() {
                           className={`w-24 h-11 text-center text-base font-medium rounded-md border px-2 ${
                             isBelowLimit
                               ? 'border-red-500 bg-red-50 font-bold ring-2 ring-red-300'
-                              : isChanged
-                                ? 'border-orange-500 bg-orange-50 font-bold ring-2 ring-orange-300'
-                                : 'border-gray-300 bg-white'
+                              : 'border-gray-300 bg-white'
                           }`}
                           value={stock}
                           onChange={e => updateStock(product.id, parseInt(e.target.value) || 0)}
@@ -178,11 +174,6 @@ export default function StockCheckPage() {
                         {isBelowLimit && (
                           <div className="text-xs text-red-600 font-bold">
                             ⚠ 下限{product.trigger_stock}個
-                          </div>
-                        )}
-                        {isChanged && !isBelowLimit && (
-                          <div className="text-xs text-orange-700 font-bold">
-                            前回: {prevStock}
                           </div>
                         )}
                       </div>
@@ -197,8 +188,8 @@ export default function StockCheckPage() {
 
       <div className="mt-4 flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 bg-orange-50 border-2 border-orange-500 rounded ring-2 ring-orange-300" />
-          <span className="text-sm font-medium">今回変更あり</span>
+          <div className="w-5 h-5 bg-red-50 border-2 border-red-500 rounded ring-2 ring-red-300" />
+          <span className="text-sm font-medium">補充アラート（下限値以下）</span>
         </div>
       </div>
 
