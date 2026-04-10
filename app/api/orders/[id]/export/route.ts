@@ -80,7 +80,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       row++;
       itemDeliveries.forEach(ds => {
         ws.getCell(row, 2).value = `  → ${ds.delivery_date} 納品: ${ds.quantity}個`;
-        ws.getCell(row, 2).font = { color: { argb: 'FF0066CC' }, size: 10 };
+        ws.getCell(row, 2).font = { color: { argb: 'FF000000' }, size: 10 };
         row++;
       });
     });
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // PDF (HTML)
   const itemRows = mappedItems.map((item, idx) => {
     const itemDeliveries = deliveryMap.get(item.id) || [];
-    const deliveryRows = itemDeliveries.map(ds => `<tr><td colspan="7" style="padding-left:40px;color:#0066CC;font-size:12px;">&rarr; ${ds.delivery_date} 納品: ${ds.quantity}個</td></tr>`).join('');
+    const deliveryRows = itemDeliveries.map(ds => `<tr><td colspan="7" style="padding-left:40px;color:#000000;font-size:12px;">&rarr; ${ds.delivery_date} 納品: ${ds.quantity}個</td></tr>`).join('');
     return `<tr>
       <td style="text-align:center;border:1px solid #ccc;padding:6px;">${idx + 1}</td>
       <td style="border:1px solid #ccc;padding:6px;">${item.color_label} ${item.frame_size_name}(${item.size_label})</td>
