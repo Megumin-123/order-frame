@@ -536,15 +536,18 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             return new Date(d.getFullYear(), d.getMonth(), diff);
           };
           // この発注書の分 + 他の発注書の未納品分を全て集計
-          const weekMap = new Map<string, { mondayDate: Date; thisOrder: number; otherOrders: number }>();
+          const weekMap = new Map<string, { mondayDate: Date; thisOrder: number; otherOrders: number; dailyDetails: Map<string, { thisQty: number; otherQty: number }> }>();
           const addToWeek = (dateStr: string, qty: number, isThis: boolean) => {
             const parts = dateStr.split('-');
             if (parts.length < 3) return;
             const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             const monday = getMonday(d);
             const key = monday.toISOString().split('T')[0];
-            const entry = weekMap.get(key) || { mondayDate: monday, thisOrder: 0, otherOrders: 0 };
+            const entry = weekMap.get(key) || { mondayDate: monday, thisOrder: 0, otherOrders: 0, dailyDetails: new Map() };
             if (isThis) entry.thisOrder += qty; else entry.otherOrders += qty;
+            const daily = entry.dailyDetails.get(dateStr) || { thisQty: 0, otherQty: 0 };
+            if (isThis) daily.thisQty += qty; else daily.otherQty += qty;
+            entry.dailyDetails.set(dateStr, daily);
             weekMap.set(key, entry);
           };
           // この発注書の納品
@@ -562,11 +565,28 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                 const toStr = `${sun.getMonth()+1}/${sun.getDate()}(${weekdays[sun.getDay()]})`;
                 const grandTotal = week.thisOrder + week.otherOrders;
                 const isOver = grandTotal > WEEKLY_LIMIT;
+                const sortedDailyDetails = Array.from(week.dailyDetails.entries()).sort();
                 return (
-                  <span key={key} className={`px-3 py-1 rounded-lg text-base font-medium ${isOver ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-blue-50 text-blue-800'}`}
-                    title={`この発注: ${week.thisOrder}個 / 他の発注: ${week.otherOrders}個`}>
+                  <span key={key} className={`relative group/week px-3 py-1 rounded-lg text-base font-medium cursor-help ${isOver ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-blue-50 text-blue-800'}`}>
                     {fromStr}～{toStr} <span className={`text-lg font-bold ${isOver ? 'text-red-600' : 'text-blue-900'}`}>{grandTotal}個</span>
                     {isOver && <span className="ml-1 text-xs text-red-600">⚠超過</span>}
+                    <div className="hidden group-hover/week:block absolute z-50 left-0 top-full mt-1 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
+                      {sortedDailyDetails.map(([date, daily]) => {
+                        const dp = date.split('-');
+                        const dd = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]));
+                        const dateLabel = `${parseInt(dp[1])}/${parseInt(dp[2])}(${weekdays[dd.getDay()]})`;
+                        const dayTotal = daily.thisQty + daily.otherQty;
+                        return (
+                          <div key={date}>
+                            {dateLabel} <span className="font-bold">{dayTotal}個</span>
+                            {daily.otherQty > 0 && <span className="text-gray-400 text-xs ml-1">(他{daily.otherQty})</span>}
+                          </div>
+                        );
+                      })}
+                      <div className="mt-1 pt-1 border-t border-gray-600 text-xs text-gray-300">
+                        この発注: {week.thisOrder}個 / 他: {week.otherOrders}個
+                      </div>
+                    </div>
                   </span>
                 );
               })}
