@@ -579,7 +579,6 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                         return (
                           <div key={date}>
                             {dateLabel} <span className="font-bold">{dayTotal}個</span>
-                            {daily.otherQty > 0 && <span className="text-gray-400 text-xs ml-1">(他{daily.otherQty})</span>}
                           </div>
                         );
                       })}
