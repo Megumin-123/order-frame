@@ -88,7 +88,7 @@ export default function OrdersPage() {
               <tr className="bg-gray-50">
                 <th className="text-left px-4 py-3 font-semibold">発注番号</th>
                 <th className="text-left px-4 py-3 font-semibold">発注日</th>
-                <th className="text-center px-4 py-3 font-semibold">ステータス</th>
+                <th className="text-center px-4 py-3 font-semibold">納品状況</th>
                 <th className="text-right px-4 py-3 font-semibold">税込合計</th>
                 <th className="text-center px-4 py-3 font-semibold">操作</th>
               </tr>
