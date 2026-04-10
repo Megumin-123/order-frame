@@ -73,10 +73,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const data = await request.json();
 
-  if (data.status) {
-    await supabase.from('of_orders').update({ status: data.status, updated_at: new Date().toISOString() }).eq('id', id);
-  }
-
   if (data.memo !== undefined) {
     await supabase.from('of_orders').update({ memo: data.memo, updated_at: new Date().toISOString() }).eq('id', id);
   }
@@ -113,6 +109,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       subtotal, tax_amount: taxAmount, total_amount: subtotal + taxAmount,
       updated_at: new Date().toISOString(),
     }).eq('id', id);
+  }
+
+  // statusの更新はitemsの保存後に行う
+  if (data.status) {
+    await supabase.from('of_orders').update({ status: data.status, updated_at: new Date().toISOString() }).eq('id', id);
   }
 
   return NextResponse.json({ success: true });

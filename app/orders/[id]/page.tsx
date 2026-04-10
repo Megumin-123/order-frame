@@ -161,11 +161,16 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   };
 
   const handleStatusChange = async (status: string) => {
+    // 確定前に自動保存
+    const syncedItems = items.map(item => {
+      const validSchedules = item.deliverySchedules.filter(d => d.deliveryDate && d.quantity > 0);
+      return { ...item, deliverySchedules: validSchedules, quantity: validSchedules.reduce((s, d) => s + (d.quantity || 0), 0) };
+    });
     await fetch(`/api/orders/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ items: syncedItems, orderDate, status }),
     });
-    toast.success(status === 'submitted' ? '発注を確定しました' : 'ステータスを更新しました');
+    toast.success(status === 'submitted' ? '保存して発注を確定しました' : 'ステータスを更新しました');
     setShowConfirmSubmit(false); fetchOrder();
   };
 
