@@ -38,6 +38,14 @@ export default function DeliveriesPage() {
   const [editMemoId, setEditMemoId] = useState<number | null>(null);
   const [editMemoText, setEditMemoText] = useState('');
   const [editDateId, setEditDateId] = useState<number | null>(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
+  const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth() + 1);
+  const [summaryData, setSummaryData] = useState<{
+    dates: string[]; matrix: Record<string, Record<string, Record<string, number>>>;
+    sizeOrder: string[]; sizeLabels: Record<string, string>; colorOrder: string[];
+  } | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
   const [editDateText, setEditDateText] = useState('');
   const [editReceiveId, setEditReceiveId] = useState<number | null>(null);
   const [editReceiveQty, setEditReceiveQty] = useState(0);
@@ -121,6 +129,80 @@ export default function DeliveriesPage() {
 
   const getColorStyle = (code: string) => COLOR_OPTIONS.find(c => c.code === code) || COLOR_OPTIONS[0];
 
+  const handleLoadSummary = async () => {
+    setLoadingSummary(true);
+    const res = await fetch(`/api/deliveries/summary?year=${summaryYear}&month=${summaryMonth}`);
+    const data = await res.json();
+    setSummaryData(data);
+    setShowSummary(true);
+    setLoadingSummary(false);
+  };
+
+  const handleExportSummary = () => {
+    window.open(`/api/deliveries/summary/export?year=${summaryYear}&month=${summaryMonth}`, '_blank');
+  };
+
+  const handlePrintSummary = () => {
+    if (!summaryData) return;
+    const weekdays = ['日','月','火','水','木','金','土'];
+    const colorLabels: Record<string, string> = { YELLOW_OAK: '黄オーク', BROWN: 'ブラウン', WHITE: 'ホワイト' };
+    const colorBgs: Record<string, string> = { YELLOW_OAK: '#fef3c7', BROWN: '#dbc8a8', WHITE: '#e0f2fe' };
+
+    let dateHeaders = '';
+    let colorHeaders = '<td style="border:1px solid #999;padding:4px;font-weight:bold">種類</td>';
+    summaryData.dates.forEach(date => {
+      const parts = date.split('-');
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      dateHeaders += `<td colspan="3" style="border:1px solid #999;padding:4px;text-align:center;font-weight:bold">${parseInt(parts[1])}/${parseInt(parts[2])}(${weekdays[d.getDay()]})</td>`;
+      summaryData.colorOrder.forEach(color => {
+        colorHeaders += `<td style="border:1px solid #999;padding:3px;text-align:center;font-size:10px;font-weight:bold;background:${colorBgs[color]}">${colorLabels[color]}</td>`;
+      });
+    });
+    dateHeaders += `<td colspan="3" style="border:1px solid #999;padding:4px;text-align:center;font-weight:bold">${summaryMonth}月合計</td>`;
+    summaryData.colorOrder.forEach(color => {
+      colorHeaders += `<td style="border:1px solid #999;padding:3px;text-align:center;font-size:10px;font-weight:bold;background:${colorBgs[color]}">${colorLabels[color]}</td>`;
+    });
+
+    let bodyRows = '';
+    summaryData.sizeOrder.forEach(size => {
+      let cells = `<td style="border:1px solid #999;padding:4px;font-weight:bold">${summaryData.sizeLabels[size]}</td>`;
+      summaryData.dates.forEach(date => {
+        summaryData.colorOrder.forEach(color => {
+          const v = summaryData.matrix[size]?.[color]?.[date] || 0;
+          cells += `<td style="border:1px solid #999;padding:3px;text-align:center">${v || ''}</td>`;
+        });
+      });
+      summaryData.colorOrder.forEach(color => {
+        const total = summaryData.dates.reduce((s, date) => s + (summaryData.matrix[size]?.[color]?.[date] || 0), 0);
+        cells += `<td style="border:1px solid #999;padding:3px;text-align:center;background:#f5f5f5;font-weight:bold">${total || ''}</td>`;
+      });
+      bodyRows += `<tr>${cells}</tr>`;
+    });
+
+    // Total row
+    let totalCells = '<td style="border:1px solid #999;padding:4px;font-weight:bold;background:#e8e8e8">合計</td>';
+    summaryData.dates.forEach(date => {
+      summaryData.colorOrder.forEach(color => {
+        const total = summaryData.sizeOrder.reduce((s, size) => s + (summaryData.matrix[size]?.[color]?.[date] || 0), 0);
+        totalCells += `<td style="border:1px solid #999;padding:3px;text-align:center;background:#e8e8e8;font-weight:bold">${total || ''}</td>`;
+      });
+    });
+    summaryData.colorOrder.forEach(color => {
+      const gt = summaryData.sizeOrder.reduce((s, size) => s + summaryData.dates.reduce((s2, date) => s2 + (summaryData.matrix[size]?.[color]?.[date] || 0), 0), 0);
+      totalCells += `<td style="border:1px solid #999;padding:3px;text-align:center;background:#e8e8e8;font-weight:bold">${gt || ''}</td>`;
+    });
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>納品早見表</title>
+<style>body{font-family:'MS Gothic',sans-serif;margin:20px;font-size:12px}table{border-collapse:collapse}
+@media print{@page{size:landscape}body{margin:5mm}}</style></head>
+<body><h2 style="text-align:center">納品日別納品早見表 ${summaryYear}年${summaryMonth}月</h2>
+<table><thead><tr><td style="border:1px solid #999;padding:4px;font-weight:bold">納品日</td>${dateHeaders}</tr>
+<tr>${colorHeaders}</tr></thead><tbody>${bodyRows}<tr>${totalCells}</tr></tbody></table>
+<script>window.print();</script></body></html>`;
+    const win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
   const handlePrintList = () => {
     const today = new Date().toLocaleDateString('ja-JP');
     const rows = deliveries.map(d => {
@@ -170,9 +252,25 @@ export default function DeliveriesPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">納品一覧</h1>
-        <Button className="text-base h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white" onClick={handlePrintList}>
-          納品一覧表
-        </Button>
+        <div className="flex gap-2">
+          <Button className="text-base h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white" onClick={handlePrintList}>
+            納品一覧表
+          </Button>
+          <div className="flex items-center gap-1">
+            <select className="h-10 px-2 border rounded text-base" value={`${summaryYear}-${summaryMonth}`}
+              onChange={e => { const [y, m] = e.target.value.split('-'); setSummaryYear(parseInt(y)); setSummaryMonth(parseInt(m)); }}>
+              {Array.from({ length: 12 }, (_, i) => {
+                const d = new Date(); d.setMonth(d.getMonth() - 3 + i);
+                const y = d.getFullYear(); const m = d.getMonth() + 1;
+                return <option key={`${y}-${m}`} value={`${y}-${m}`}>{y}年{m}月</option>;
+              })}
+            </select>
+            <Button className="text-base h-10 px-4 bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleLoadSummary} disabled={loadingSummary}>
+              {loadingSummary ? '読込中...' : '納品早見表'}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border p-4 mb-6 flex flex-wrap items-end gap-4">
@@ -202,6 +300,79 @@ export default function DeliveriesPage() {
           </select>
         </div>
       </div>
+
+      {/* 早見表 */}
+      {showSummary && summaryData && (
+        <div className="bg-white rounded-lg border p-4 mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-lg font-bold">納品早見表 {summaryYear}年{summaryMonth}月</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" className="text-sm h-9 px-4" onClick={handlePrintSummary}>印刷</Button>
+              <Button variant="outline" className="text-sm h-9 px-4" onClick={handleExportSummary}>Excel</Button>
+              <Button variant="ghost" className="text-sm h-9 px-3 text-gray-400" onClick={() => setShowSummary(false)}>閉じる</Button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-2 py-1 bg-gray-100 text-left whitespace-nowrap">納品日</th>
+                  {summaryData.dates.map(date => {
+                    const parts = date.split('-');
+                    const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                    return (
+                      <th key={date} colSpan={3} className="border border-gray-300 px-2 py-1 bg-gray-100 text-center whitespace-nowrap">
+                        {parseInt(parts[1])}/{parseInt(parts[2])}({WEEKDAYS[d.getDay()]})
+                      </th>
+                    );
+                  })}
+                  <th colSpan={3} className="border border-gray-300 px-2 py-1 bg-gray-200 text-center whitespace-nowrap font-bold">{summaryMonth}月合計</th>
+                </tr>
+                <tr>
+                  <th className="border border-gray-300 px-2 py-1 bg-gray-100">種類</th>
+                  {[...summaryData.dates, 'total'].map((_, di) =>
+                    summaryData!.colorOrder.map(color => {
+                      const labels: Record<string, string> = { YELLOW_OAK: '黄ｵｰｸ', BROWN: 'ﾌﾞﾗｳﾝ', WHITE: 'ﾎﾜｲﾄ' };
+                      const bgs: Record<string, string> = { YELLOW_OAK: 'bg-amber-100', BROWN: 'bg-brown-light', WHITE: 'bg-blue-50' };
+                      return <th key={`${di}-${color}`} className={`border border-gray-300 px-1 py-1 text-center text-xs ${bgs[color]}`}>{labels[color]}</th>;
+                    })
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {summaryData.sizeOrder.map(size => (
+                  <tr key={size}>
+                    <td className="border border-gray-300 px-2 py-1 font-medium whitespace-nowrap">{summaryData!.sizeLabels[size]}</td>
+                    {summaryData!.dates.map(date =>
+                      summaryData!.colorOrder.map(color => {
+                        const v = summaryData!.matrix[size]?.[color]?.[date] || 0;
+                        return <td key={`${date}-${color}`} className="border border-gray-300 px-2 py-1 text-center">{v || ''}</td>;
+                      })
+                    )}
+                    {summaryData!.colorOrder.map(color => {
+                      const total = summaryData!.dates.reduce((s, date) => s + (summaryData!.matrix[size]?.[color]?.[date] || 0), 0);
+                      return <td key={`total-${color}`} className="border border-gray-300 px-2 py-1 text-center bg-gray-50 font-bold">{total || ''}</td>;
+                    })}
+                  </tr>
+                ))}
+                <tr className="bg-gray-100">
+                  <td className="border border-gray-300 px-2 py-1 font-bold">合計</td>
+                  {summaryData.dates.map(date =>
+                    summaryData!.colorOrder.map(color => {
+                      const total = summaryData!.sizeOrder.reduce((s, size) => s + (summaryData!.matrix[size]?.[color]?.[date] || 0), 0);
+                      return <td key={`${date}-${color}-total`} className="border border-gray-300 px-2 py-1 text-center font-bold">{total || ''}</td>;
+                    })
+                  )}
+                  {summaryData.colorOrder.map(color => {
+                    const gt = summaryData!.sizeOrder.reduce((s, size) => s + summaryData!.dates.reduce((s2, date) => s2 + (summaryData!.matrix[size]?.[color]?.[date] || 0), 0), 0);
+                    return <td key={`gt-${color}`} className="border border-gray-300 px-2 py-1 text-center font-bold bg-gray-200">{gt || ''}</td>;
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-lg">読み込み中...</div>
