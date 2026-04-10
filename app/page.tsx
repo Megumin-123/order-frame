@@ -96,9 +96,9 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="bg-white rounded-lg border overflow-hidden max-h-[500px] overflow-y-auto">
+            <div className="bg-white rounded-lg border overflow-hidden">
               <table className="w-full">
-                <thead className="sticky top-0">
+                <thead>
                   <tr className="bg-gray-50">
                     <th className="text-left px-2 py-2 font-semibold whitespace-nowrap">納品予定日</th>
                     <th className="text-left px-2 py-2 font-semibold">商品</th>
@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xl font-semibold">最近の発注書</h2>
+            <h2 className="text-xl font-semibold">進行中の発注書</h2>
             <Link href="/orders">
               <span className="text-blue-600 hover:underline text-base">すべて見る</span>
             </Link>
@@ -162,7 +162,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.slice(0, 5).map(order => {
+                  {orders.filter(o => o.status !== 'delivered').map(order => {
                     const st = ORDER_STATUS[order.status as keyof typeof ORDER_STATUS] || ORDER_STATUS.draft;
                     return (
                       <tr key={order.id} className="border-t">
