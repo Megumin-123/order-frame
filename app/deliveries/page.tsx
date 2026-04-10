@@ -149,23 +149,23 @@ export default function DeliveriesPage() {
     const colorBgs: Record<string, string> = { YELLOW_OAK: '#fef3c7', BROWN: '#dbc8a8', WHITE: '#e0f2fe' };
 
     let dateHeaders = '';
-    let colorHeaders = '<td style="border:1px solid #999;padding:4px;font-weight:bold">種類</td>';
+    let colorHeaders = '<td style="border:2px solid #666;padding:6px;font-weight:bold;background:#d0d0d0;font-size:12px">種類</td>';
     summaryData.dates.forEach(date => {
       const parts = date.split('-');
       const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      dateHeaders += `<td colspan="3" style="border:1px solid #999;padding:4px;text-align:center;font-weight:bold">${parseInt(parts[1])}/${parseInt(parts[2])}(${weekdays[d.getDay()]})</td>`;
+      dateHeaders += `<td colspan="3" style="border:2px solid #666;padding:6px;text-align:center;font-weight:bold;background:#d0d0d0;font-size:13px">${parseInt(parts[1])}/${parseInt(parts[2])}(${weekdays[d.getDay()]})</td>`;
       summaryData.colorOrder.forEach(color => {
-        colorHeaders += `<td style="border:1px solid #999;padding:3px;text-align:center;font-size:10px;font-weight:bold;background:${colorBgs[color]}">${colorLabels[color]}</td>`;
+        colorHeaders += `<td style="border:2px solid #666;padding:4px;text-align:center;font-size:11px;font-weight:bold;background:${colorBgs[color]};color:#333">${colorLabels[color]}</td>`;
       });
     });
-    dateHeaders += `<td colspan="3" style="border:1px solid #999;padding:4px;text-align:center;font-weight:bold">${summaryMonth}月合計</td>`;
+    dateHeaders += `<td colspan="3" style="border:2px solid #666;padding:6px;text-align:center;font-weight:bold;background:#b0b0b0;font-size:13px">${summaryMonth}月合計</td>`;
     summaryData.colorOrder.forEach(color => {
-      colorHeaders += `<td style="border:1px solid #999;padding:3px;text-align:center;font-size:10px;font-weight:bold;background:${colorBgs[color]}">${colorLabels[color]}</td>`;
+      colorHeaders += `<td style="border:2px solid #666;padding:4px;text-align:center;font-size:11px;font-weight:bold;background:${colorBgs[color]};color:#333">${colorLabels[color]}</td>`;
     });
 
     let bodyRows = '';
     summaryData.sizeOrder.forEach(size => {
-      let cells = `<td style="border:1px solid #999;padding:4px;font-weight:bold">${summaryData.sizeLabels[size]}</td>`;
+      let cells = `<td style="border:1px solid #999;padding:5px;font-weight:bold;background:#f0f0f0;font-size:12px">${summaryData.sizeLabels[size]}</td>`;
       summaryData.dates.forEach(date => {
         summaryData.colorOrder.forEach(color => {
           const v = summaryData.matrix[size]?.[color]?.[date] || 0;
@@ -193,10 +193,11 @@ export default function DeliveriesPage() {
     });
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>納品早見表</title>
-<style>body{font-family:'MS Gothic',sans-serif;margin:20px;font-size:12px}table{border-collapse:collapse}
+<style>body{font-family:'MS Gothic',sans-serif;margin:20px;font-size:12px}table{border-collapse:collapse;width:100%}
+td{border:1px solid #999}
 @media print{@page{size:landscape}body{margin:5mm}}</style></head>
-<body><h2 style="text-align:center">納品日別納品早見表 ${summaryYear}年${summaryMonth}月</h2>
-<table><thead><tr><td style="border:1px solid #999;padding:4px;font-weight:bold">納品日</td>${dateHeaders}</tr>
+<body><h2 style="text-align:center;margin-bottom:15px">納品日別納品早見表 ${summaryYear}年${summaryMonth}月</h2>
+<table><thead><tr><td style="border:2px solid #666;padding:6px;font-weight:bold;background:#d0d0d0;font-size:12px">納品日</td>${dateHeaders}</tr>
 <tr>${colorHeaders}</tr></thead><tbody>${bodyRows}<tr>${totalCells}</tr></tbody></table>
 <script>window.print();</script></body></html>`;
     const win = window.open('', '_blank');
