@@ -9,6 +9,12 @@ import { toast } from 'sonner';
 export default function SettingsPage() {
   const [deliveryLeadDays, setDeliveryLeadDays] = useState('21');
   const [mdbPath, setMdbPath] = useState('C:\\Users\\smili\\Documents\\system\\sysdata.mdb');
+  const [smtpHost, setSmtpHost] = useState('smtp.happy-vision.co.jp');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUser, setSmtpUser] = useState('com@happy-vision.co.jp');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSubject, setEmailSubject] = useState('額の発注 ハッピービジョン');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testSending, setTestSending] = useState(false);
@@ -17,6 +23,12 @@ export default function SettingsPage() {
     fetch('/api/settings').then(r => r.json()).then(data => {
       if (data.delivery_lead_days) setDeliveryLeadDays(data.delivery_lead_days);
       if (data.mdb_path) setMdbPath(data.mdb_path);
+      if (data.smtp_host) setSmtpHost(data.smtp_host);
+      if (data.smtp_port) setSmtpPort(data.smtp_port);
+      if (data.smtp_user) setSmtpUser(data.smtp_user);
+      if (data.smtp_pass) setSmtpPass(data.smtp_pass);
+      if (data.email_to) setEmailTo(data.email_to);
+      if (data.email_subject) setEmailSubject(data.email_subject);
       setLoading(false);
     });
   }, []);
@@ -26,7 +38,11 @@ export default function SettingsPage() {
     await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ delivery_lead_days: deliveryLeadDays, mdb_path: mdbPath }),
+      body: JSON.stringify({
+        delivery_lead_days: deliveryLeadDays, mdb_path: mdbPath,
+        smtp_host: smtpHost, smtp_port: smtpPort, smtp_user: smtpUser, smtp_pass: smtpPass,
+        email_to: emailTo, email_subject: emailSubject,
+      }),
     });
     toast.success('設定を保存しました');
     setSaving(false);
@@ -96,6 +112,41 @@ export default function SettingsPage() {
           <Button className="text-base h-12 px-8" onClick={handleSave} disabled={saving}>
             {saving ? '保存中...' : '保存する'}
           </Button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border p-6 max-w-lg mb-6">
+        <h2 className="text-lg font-semibold mb-4">メール送信設定</h2>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-base">SMTPサーバー</Label>
+              <Input className="text-base h-10 mt-1" value={smtpHost} onChange={e => setSmtpHost(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-base">ポート</Label>
+              <Input className="text-base h-10 mt-1" value={smtpPort} onChange={e => setSmtpPort(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-base">送信元メールアドレス</Label>
+              <Input className="text-base h-10 mt-1" value={smtpUser} onChange={e => setSmtpUser(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-base">パスワード</Label>
+              <Input type="password" className="text-base h-10 mt-1" value={smtpPass} onChange={e => setSmtpPass(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label className="text-base">送信先メールアドレス</Label>
+            <Input className="text-base h-10 mt-1" value={emailTo} onChange={e => setEmailTo(e.target.value)}
+              placeholder="例: order@example.com" />
+          </div>
+          <div>
+            <Label className="text-base">メール件名</Label>
+            <Input className="text-base h-10 mt-1" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+          </div>
         </div>
       </div>
 

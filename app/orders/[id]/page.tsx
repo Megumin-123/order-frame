@@ -115,6 +115,21 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   };
 
   const [sendingLine, setSendingLine] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    setSendingEmail(true);
+    try {
+      const res = await fetch('/api/email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: id }),
+      });
+      const data = await res.json();
+      if (data.success) { toast.success('メールを送信しました'); }
+      else { toast.error(data.error || 'メール送信に失敗しました'); }
+    } catch { toast.error('メール送信に失敗しました'); }
+    setSendingEmail(false);
+  };
 
   const handleCalcStats = async () => {
     // Find the first delivery date from items
@@ -511,6 +526,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               {loadingStats ? '計算中...' : '注文実績'}
             </Button>
             <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('pdf')}>PDF</Button>
+            <Button className="text-base h-10 px-5 bg-blue-500 hover:bg-blue-600 text-white"
+              onClick={handleSendEmail} disabled={sendingEmail}>
+              {sendingEmail ? '送信中...' : 'メール送信'}
+            </Button>
           </div>
         </div>
         <div className="flex items-center gap-8">
