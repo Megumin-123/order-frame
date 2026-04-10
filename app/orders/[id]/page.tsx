@@ -33,6 +33,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [settings, setSettings] = useState<{ delivery_lead_days?: string; mdb_path?: string }>({});
+  const [otherPendingDeliveries, setOtherPendingDeliveries] = useState<{ delivery_date: string; quantity: number; order_id: number }[]>([]);
   const [orderStats, setOrderStats] = useState<Record<string, Record<string, number>> | null>(null);
   const [statsPeriod, setStatsPeriod] = useState<{ from: string; to: string } | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -44,6 +45,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     const data = await res.json();
     setOrder(data);
     setOrderDate(data.order_date);
+    // 他の発注書の未納品（この発注書以外）
+    setOtherPendingDeliveries(
+      (data.allPendingDeliveries || []).filter((d: { order_id: number }) => d.order_id !== data.id)
+    );
     setItems(data.items.map((item: Record<string, unknown>) => ({
       productId: item.product_id, quantity: item.quantity, unitPrice: item.unit_price,
       productName: item.product_name as string, sizeLabel: item.size_label as string,
@@ -523,24 +528,29 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
         {deliveryDates.size > 0 && (() => {
-          // 週ごとに集計（月曜始まり）
+          const WEEKLY_LIMIT = 150;
           const weekdays = ['日','月','火','水','木','金','土'];
           const getMonday = (d: Date) => {
             const day = d.getDay();
             const diff = d.getDate() - day + (day === 0 ? -6 : 1);
             return new Date(d.getFullYear(), d.getMonth(), diff);
           };
-          const weekMap = new Map<string, { mondayDate: Date; dates: string[]; total: number }>();
-          Array.from(deliveryDates.entries()).sort().forEach(([date, info]) => {
-            const parts = date.split('-');
+          // この発注書の分 + 他の発注書の未納品分を全て集計
+          const weekMap = new Map<string, { mondayDate: Date; thisOrder: number; otherOrders: number }>();
+          const addToWeek = (dateStr: string, qty: number, isThis: boolean) => {
+            const parts = dateStr.split('-');
+            if (parts.length < 3) return;
             const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             const monday = getMonday(d);
             const key = monday.toISOString().split('T')[0];
-            const entry = weekMap.get(key) || { mondayDate: monday, dates: [], total: 0 };
-            entry.dates.push(date);
-            entry.total += info.total;
+            const entry = weekMap.get(key) || { mondayDate: monday, thisOrder: 0, otherOrders: 0 };
+            if (isThis) entry.thisOrder += qty; else entry.otherOrders += qty;
             weekMap.set(key, entry);
-          });
+          };
+          // この発注書の納品
+          Array.from(deliveryDates.entries()).forEach(([date, info]) => addToWeek(date, info.total, true));
+          // 他の発注書の未納品
+          otherPendingDeliveries.forEach(d => addToWeek(d.delivery_date, d.quantity, false));
 
           return (
             <div className="flex items-center gap-3 mt-3 pt-3 border-t flex-wrap">
@@ -550,9 +560,13 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                 const sun = new Date(m.getFullYear(), m.getMonth(), m.getDate() + 6);
                 const fromStr = `${m.getMonth()+1}/${m.getDate()}(${weekdays[m.getDay()]})`;
                 const toStr = `${sun.getMonth()+1}/${sun.getDate()}(${weekdays[sun.getDay()]})`;
+                const grandTotal = week.thisOrder + week.otherOrders;
+                const isOver = grandTotal > WEEKLY_LIMIT;
                 return (
-                  <span key={key} className="px-3 py-1 bg-blue-50 text-blue-800 rounded-lg text-base font-medium">
-                    {fromStr}～{toStr} <span className="text-lg font-bold text-blue-900">{week.total}個</span>
+                  <span key={key} className={`px-3 py-1 rounded-lg text-base font-medium ${isOver ? 'bg-red-100 text-red-800 border border-red-300' : 'bg-blue-50 text-blue-800'}`}
+                    title={`この発注: ${week.thisOrder}個 / 他の発注: ${week.otherOrders}個`}>
+                    {fromStr}～{toStr} <span className={`text-lg font-bold ${isOver ? 'text-red-600' : 'text-blue-900'}`}>{grandTotal}個</span>
+                    {isOver && <span className="ml-1 text-xs text-red-600">⚠超過</span>}
                   </span>
                 );
               })}

@@ -66,7 +66,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     };
   });
 
-  return NextResponse.json({ ...order, items: itemsWithDeliveries });
+  // Get ALL pending deliveries across all orders for weekly capacity check
+  const { data: allPendingDeliveries } = await supabase.from('of_delivery_schedules')
+    .select('delivery_date, quantity, order_id')
+    .eq('is_received', 0)
+    .gt('quantity', 0)
+    .order('delivery_date');
+
+  return NextResponse.json({ ...order, items: itemsWithDeliveries, allPendingDeliveries: allPendingDeliveries || [] });
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
