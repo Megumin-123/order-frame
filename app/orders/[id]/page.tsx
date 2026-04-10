@@ -510,7 +510,6 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               onClick={handleCalcStats} disabled={loadingStats}>
               {loadingStats ? '計算中...' : '注文実績'}
             </Button>
-            <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('xlsx')}>Excel</Button>
             <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('pdf')}>PDF</Button>
           </div>
         </div>
