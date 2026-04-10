@@ -197,8 +197,8 @@ export default function DeliveriesPage() {
               <div className="flex items-center gap-3 mb-2">
                 <h2 className="text-xl font-semibold">
                   {formatDateWithDay(date)}
-                  {date === todayStr() && <span className="ml-2 px-2 py-0.5 bg-green-500 text-white rounded text-xs font-bold">本日</span>}
-                  {date < todayStr() && <span className="ml-2 px-2 py-0.5 bg-red-500 text-white rounded text-xs font-bold">遅延</span>}
+                  {date === todayStr() && receivedCount < items.length && <span className="ml-2 px-2 py-0.5 bg-green-500 text-white rounded text-xs font-bold">本日</span>}
+                  {date < todayStr() && receivedCount < items.length && <span className="ml-2 px-2 py-0.5 bg-red-500 text-white rounded text-xs font-bold">遅延</span>}
                 </h2>
                 <span className="text-gray-500">{items.length}商品 / {totalQty}個</span>
                 {receivedCount === items.length ? (
