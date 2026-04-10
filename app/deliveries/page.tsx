@@ -65,36 +65,39 @@ export default function DeliveriesPage() {
     if (editReceiveId === null) return;
     const delivery = deliveries.find(d => d.id === editReceiveId);
     if (!delivery) return;
-    const isFullReceive = editReceiveQty >= delivery.quantity;
-    await fetch(`/api/deliveries/${editReceiveId}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        isReceived: isFullReceive, receivedAt: todayStr(),
-        receivedQuantity: editReceiveQty,
-      }),
-    });
-    toast.success(isFullReceive ? '納品を登録しました' : `${editReceiveQty}個を納品登録しました（残${delivery.quantity - editReceiveQty}個）`);
-    setDeliveries(prev => prev.map(d =>
-      d.id === editReceiveId ? {
-        ...d,
-        is_received: isFullReceive ? 1 : 0,
-        received_at: todayStr(),
-        received_quantity: editReceiveQty,
-      } : d
-    ));
+
+    if (editReceiveQty === 0) {
+      // 0の場合は未納品に戻す
+      await fetch(`/api/deliveries/${editReceiveId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isReceived: false, receivedQuantity: null }),
+      });
+      toast.success('納品登録を取り消しました');
+      setDeliveries(prev => prev.map(d =>
+        d.id === editReceiveId ? { ...d, is_received: 0, received_at: null, received_quantity: null } : d
+      ));
+    } else {
+      const isFullReceive = editReceiveQty >= delivery.quantity;
+      await fetch(`/api/deliveries/${editReceiveId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isReceived: isFullReceive, receivedAt: todayStr(),
+          receivedQuantity: editReceiveQty,
+        }),
+      });
+      toast.success(isFullReceive ? '納品を登録しました' : `${editReceiveQty}個を納品登録しました（残${delivery.quantity - editReceiveQty}個）`);
+      setDeliveries(prev => prev.map(d =>
+        d.id === editReceiveId ? {
+          ...d,
+          is_received: isFullReceive ? 1 : 0,
+          received_at: todayStr(),
+          received_quantity: editReceiveQty,
+        } : d
+      ));
+    }
     setEditReceiveId(null);
   };
 
-  const handleUnreceive = async (id: number) => {
-    await fetch(`/api/deliveries/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isReceived: false, receivedQuantity: null }),
-    });
-    toast.success('納品登録を取り消しました');
-    setDeliveries(prev => prev.map(d =>
-      d.id === id ? { ...d, is_received: 0, received_at: null, received_quantity: null } : d
-    ));
-  };
 
   const handleSaveMemo = async (id: number) => {
     await fetch(`/api/deliveries/${id}`, {
@@ -261,19 +264,9 @@ export default function DeliveriesPage() {
                                 <Button variant="ghost" size="sm" className="text-xs h-6 text-gray-400"
                                   onClick={() => setEditReceiveId(null)}>キャンセル</Button>
                               </div>
-                            ) : item.is_received ? (
-                              <Button variant="outline" size="sm" className="text-xs h-8"
-                                onClick={() => handleUnreceive(item.id)}>取消</Button>
-                            ) : item.received_quantity != null && item.received_quantity > 0 ? (
-                              <div className="flex gap-1 justify-center">
-                                <Button size="sm" className="text-xs h-8"
-                                  onClick={() => handleStartReceive(item.id, item.received_quantity || item.quantity)}>修正</Button>
-                                <Button variant="outline" size="sm" className="text-xs h-8"
-                                  onClick={() => handleUnreceive(item.id)}>取消</Button>
-                              </div>
                             ) : (
                               <Button size="sm" className="text-sm h-8"
-                                onClick={() => handleStartReceive(item.id, item.quantity)}>納品登録</Button>
+                                onClick={() => handleStartReceive(item.id, item.received_quantity ?? item.quantity)}>納品登録</Button>
                             )}
                           </td>
                           <td className="px-3 py-2 text-center whitespace-nowrap">
