@@ -522,22 +522,43 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <span className="text-xl font-bold bg-blue-50 border border-blue-200 rounded-lg px-4 py-1">合計: {total.toLocaleString()}円</span>
           </div>
         </div>
-        {deliveryDates.size > 0 && (
-          <div className="flex items-center gap-3 mt-3 pt-3 border-t flex-wrap">
-            <span className="text-gray-600 font-medium">納品日別:</span>
-            {Array.from(deliveryDates.entries()).sort().map(([date, info]) => {
-              const parts = date.split('-');
-              const d = parts.length === 3 ? new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])) : null;
-              const weekdays = ['日','月','火','水','木','金','土'];
-              const display = d ? `${parseInt(parts[1])}月${parseInt(parts[2])}日(${weekdays[d.getDay()]})` : date;
-              return (
-                <span key={date} className="px-3 py-1 bg-blue-50 text-blue-800 rounded-lg text-base font-medium">
-                  {display} <span className="text-lg font-bold text-blue-900">{info.total}個</span>
-                </span>
-              );
-            })}
-          </div>
-        )}
+        {deliveryDates.size > 0 && (() => {
+          // 週ごとに集計（月曜始まり）
+          const weekdays = ['日','月','火','水','木','金','土'];
+          const getMonday = (d: Date) => {
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.getFullYear(), d.getMonth(), diff);
+          };
+          const weekMap = new Map<string, { mondayDate: Date; dates: string[]; total: number }>();
+          Array.from(deliveryDates.entries()).sort().forEach(([date, info]) => {
+            const parts = date.split('-');
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            const monday = getMonday(d);
+            const key = monday.toISOString().split('T')[0];
+            const entry = weekMap.get(key) || { mondayDate: monday, dates: [], total: 0 };
+            entry.dates.push(date);
+            entry.total += info.total;
+            weekMap.set(key, entry);
+          });
+
+          return (
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t flex-wrap">
+              <span className="text-gray-600 font-medium">週別納品:</span>
+              {Array.from(weekMap.entries()).sort().map(([key, week]) => {
+                const m = week.mondayDate;
+                const sun = new Date(m.getFullYear(), m.getMonth(), m.getDate() + 6);
+                const fromStr = `${m.getMonth()+1}/${m.getDate()}(${weekdays[m.getDay()]})`;
+                const toStr = `${sun.getMonth()+1}/${sun.getDate()}(${weekdays[sun.getDay()]})`;
+                return (
+                  <span key={key} className="px-3 py-1 bg-blue-50 text-blue-800 rounded-lg text-base font-medium">
+                    {fromStr}～{toStr} <span className="text-lg font-bold text-blue-900">{week.total}個</span>
+                  </span>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Frame groups */}
