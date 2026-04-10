@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [smtpPass, setSmtpPass] = useState('');
   const [emailTo, setEmailTo] = useState('');
   const [emailSubject, setEmailSubject] = useState('額の発注 ハッピービジョン');
+  const [emailSignature, setEmailSignature] = useState('有限会社ハッピービジョン\nTEL.0875-73-3281 FAX.0875-73-3282');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testSending, setTestSending] = useState(false);
@@ -29,6 +30,7 @@ export default function SettingsPage() {
       if (data.smtp_pass) setSmtpPass(data.smtp_pass);
       if (data.email_to) setEmailTo(data.email_to);
       if (data.email_subject) setEmailSubject(data.email_subject);
+      if (data.email_signature) setEmailSignature(data.email_signature);
       setLoading(false);
     });
   }, []);
@@ -41,7 +43,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         delivery_lead_days: deliveryLeadDays, mdb_path: mdbPath,
         smtp_host: smtpHost, smtp_port: smtpPort, smtp_user: smtpUser, smtp_pass: smtpPass,
-        email_to: emailTo, email_subject: emailSubject,
+        email_to: emailTo, email_subject: emailSubject, email_signature: emailSignature,
       }),
     });
     toast.success('設定を保存しました');
@@ -146,6 +148,11 @@ export default function SettingsPage() {
           <div>
             <Label className="text-base">メール件名</Label>
             <Input className="text-base h-10 mt-1" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-base">メール署名</Label>
+            <textarea className="w-full mt-1 p-3 border rounded-md text-base h-24 resize-y"
+              value={emailSignature} onChange={e => setEmailSignature(e.target.value)} />
           </div>
         </div>
       </div>

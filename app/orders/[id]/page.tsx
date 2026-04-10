@@ -116,13 +116,21 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
   const [sendingLine, setSendingLine] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [emailBody, setEmailBody] = useState('');
+
+  const handleOpenEmailDialog = () => {
+    setEmailBody(`いつもお世話になっております。\n下記の通り注文させていただきます。\n添付の注文書をご確認ください。`);
+    setShowEmailDialog(true);
+  };
 
   const handleSendEmail = async () => {
     setSendingEmail(true);
+    setShowEmailDialog(false);
     try {
       const res = await fetch('/api/email', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId: id }),
+        body: JSON.stringify({ orderId: id, emailBody }),
       });
       const data = await res.json();
       if (data.success) { toast.success('メールを送信しました'); }
@@ -527,7 +535,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             </Button>
             <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('pdf')}>PDF</Button>
             <Button className="text-base h-10 px-5 bg-blue-500 hover:bg-blue-600 text-white"
-              onClick={handleSendEmail} disabled={sendingEmail}>
+              onClick={handleOpenEmailDialog} disabled={sendingEmail}>
               {sendingEmail ? '送信中...' : 'メール送信'}
             </Button>
           </div>
@@ -684,6 +692,29 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <Button variant="outline" className="text-base h-12 px-6" onClick={() => setShowConfirmSubmit(false)}>いいえ</Button>
             <Button className="text-base h-12 px-6 bg-green-600 hover:bg-green-700"
               onClick={() => handleStatusChange('submitted')}>はい、確定する</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle className="text-xl">メール送信</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">発注番号: {order.order_number}（注文書PDF添付）</p>
+            </div>
+            <div>
+              <label className="text-base font-medium">メール本文</label>
+              <textarea className="w-full mt-1 p-3 border rounded-md text-base h-40 resize-y"
+                value={emailBody} onChange={e => setEmailBody(e.target.value)}
+                placeholder="メール本文を入力してください" />
+              <p className="text-xs text-gray-400 mt-1">※ 署名はシステム設定の内容が自動で付きます</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="text-base h-12 px-6" onClick={() => setShowEmailDialog(false)}>キャンセル</Button>
+            <Button className="text-base h-12 px-6 bg-blue-500 hover:bg-blue-600 text-white" onClick={handleSendEmail}>送信する</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -57,7 +57,7 @@ async function generatePdfHtml(orderId: number): Promise<string> {
 }
 
 export async function POST(request: Request) {
-  const { orderId } = await request.json();
+  const { orderId, emailBody } = await request.json();
 
   // Get email settings from DB
   const { data: settings } = await supabase.from('of_settings').select('key, value');
@@ -70,6 +70,7 @@ export async function POST(request: Request) {
   const smtpPass = settingsMap.smtp_pass || '';
   const emailTo = settingsMap.email_to || '';
   const emailSubject = settingsMap.email_subject || '額の発注 ハッピービジョン';
+  const emailSignature = settingsMap.email_signature || `${COMPANY_NAME}\nTEL.${COMPANY_TEL} FAX.${COMPANY_FAX}`;
 
   if (!emailTo) {
     return NextResponse.json({ error: '送信先メールアドレスが設定されていません。システム設定で設定してください。' }, { status: 400 });
@@ -96,14 +97,19 @@ export async function POST(request: Request) {
       auth: { user: smtpUser, pass: smtpPass },
     });
 
-    // Send email with HTML attachment
+    // Build email body
+    const body = emailBody
+      ? `${emailBody}\n\n--\n${emailSignature}`
+      : `${emailSubject}\n\n発注番号: ${orderNumber}\n\n添付の注文書をご確認ください。\n\n--\n${emailSignature}`;
+
+    // Send email with PDF (HTML) attachment
     await transporter.sendMail({
       from: smtpUser,
       to: emailTo,
       subject: `${emailSubject} ${orderNumber}`,
-      text: `${emailSubject}\n\n発注番号: ${orderNumber}\n\n添付の注文書をご確認ください。\n\n${COMPANY_NAME}`,
+      text: body,
       attachments: [{
-        filename: `${orderNumber}.html`,
+        filename: `${orderNumber}.pdf.html`,
         content: html,
         contentType: 'text/html',
       }],
