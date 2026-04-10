@@ -264,6 +264,13 @@ export default function DeliveriesPage() {
                             ) : item.is_received ? (
                               <Button variant="outline" size="sm" className="text-xs h-8"
                                 onClick={() => handleUnreceive(item.id)}>取消</Button>
+                            ) : item.received_quantity != null && item.received_quantity > 0 ? (
+                              <div className="flex gap-1 justify-center">
+                                <Button size="sm" className="text-xs h-8"
+                                  onClick={() => handleStartReceive(item.id, item.received_quantity || item.quantity)}>修正</Button>
+                                <Button variant="outline" size="sm" className="text-xs h-8"
+                                  onClick={() => handleUnreceive(item.id)}>取消</Button>
+                              </div>
                             ) : (
                               <Button size="sm" className="text-sm h-8"
                                 onClick={() => handleStartReceive(item.id, item.quantity)}>納品登録</Button>
