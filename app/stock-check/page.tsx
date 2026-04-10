@@ -157,22 +157,30 @@ export default function StockCheckPage() {
                   const stock = input?.currentStock || 0;
                   const prevStock = prevStockValues.get(product.id) ?? 0;
                   const isChanged = stock !== prevStock;
+                  const isBelowLimit = product.auto_order && product.trigger_stock > 0 && stock <= product.trigger_stock;
                   return (
-                    <td key={color.code} className={`px-4 py-3 ${isChanged ? 'bg-orange-100' : color.bgClass}`}>
+                    <td key={color.code} className={`px-4 py-3 ${isBelowLimit ? 'bg-red-50' : isChanged ? 'bg-orange-100' : color.bgClass}`}>
                       <div className="flex flex-col items-center gap-1">
                         <input
                           type="number"
                           min="0"
                           className={`w-24 h-11 text-center text-base font-medium rounded-md border px-2 ${
-                            isChanged
-                              ? 'border-orange-500 bg-orange-50 font-bold ring-2 ring-orange-300'
-                              : 'border-gray-300 bg-white'
+                            isBelowLimit
+                              ? 'border-red-500 bg-red-50 font-bold ring-2 ring-red-300'
+                              : isChanged
+                                ? 'border-orange-500 bg-orange-50 font-bold ring-2 ring-orange-300'
+                                : 'border-gray-300 bg-white'
                           }`}
                           value={stock}
                           onChange={e => updateStock(product.id, parseInt(e.target.value) || 0)}
                           onFocus={e => e.target.select()}
                         />
-                        {isChanged && (
+                        {isBelowLimit && (
+                          <div className="text-xs text-red-600 font-bold">
+                            ⚠ 下限{product.trigger_stock}個
+                          </div>
+                        )}
+                        {isChanged && !isBelowLimit && (
                           <div className="text-xs text-orange-700 font-bold">
                             前回: {prevStock}
                           </div>
