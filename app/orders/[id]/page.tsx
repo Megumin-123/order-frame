@@ -169,21 +169,26 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   };
 
   const [proposing, setProposing] = useState(false);
+  const [showProposeDialog, setShowProposeDialog] = useState(false);
+  const [proposeDeliveryDate, setProposeDeliveryDate] = useState('');
 
   const handleAutoPropose = async () => {
     setProposing(true);
+    setShowProposeDialog(false);
 
     const safetyDays = parseInt(settings.safety_stock_days || '28');
     const targetDays = parseInt(settings.target_stock_days || '35');
     const weekLimit = parseInt(settings.weekly_limit || '150');
-    const leadDays = parseInt(settings.delivery_lead_days || '21');
     const frameSizeToCode: Record<string, string> = { 'SS':'SS', 'インチ':'S', '太子':'M', '四切':'M_PLUS', '大衣':'L', 'F10':'LL' };
     const colorMap: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
 
-    // Calculate base delivery date from order date
-    const baseDate = new Date(orderDate || new Date().toISOString().split('T')[0]);
-    baseDate.setDate(baseDate.getDate() + leadDays);
-    const baseDateStr = baseDate.toISOString().split('T')[0];
+    // Use dialog delivery date or calculate from order date
+    const baseDateStr = proposeDeliveryDate || (() => {
+      const leadDays = parseInt(settings.delivery_lead_days || '21');
+      const d = new Date(orderDate || new Date().toISOString().split('T')[0]);
+      d.setDate(d.getDate() + leadDays);
+      return d.toISOString().split('T')[0];
+    })();
 
     // Step 1: Fetch order stats if not already loaded
     let stats = orderStats;
@@ -623,34 +628,34 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <span className="text-lg text-gray-700">{order.order_number}</span>
             <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.color}`}>{status.label}</span>
           </div>
-          <div className="flex gap-2">
-            {isEditable && (
-              <>
-                <Button className="text-base h-10 px-5" onClick={handleSave} disabled={saving}>
-                  {saving ? '保存中...' : '保存'}</Button>
-                <Button className="text-base h-10 px-5 bg-green-600 hover:bg-green-700"
-                  onClick={() => setShowConfirmSubmit(true)}>発注確定</Button>
-              </>
-            )}
-            <Button className="text-base h-10 px-5 bg-emerald-500 hover:bg-emerald-600 text-white"
-              onClick={handleSendLine} disabled={sendingLine}>
-              {sendingLine ? '送信中...' : '承認依頼をLINEで送信'}
-            </Button>
-            <Button variant="outline" className="text-base h-10 px-5 text-orange-600 border-orange-300 hover:bg-orange-50"
-              onClick={handleCalcStats} disabled={loadingStats}>
-              {loadingStats ? '計算中...' : '注文実績'}
-            </Button>
-            {isEditable && (
-              <Button className="text-base h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={handleAutoPropose} disabled={proposing}>
-                {proposing ? '計算中...' : '自動提案'}
-              </Button>
-            )}
-            <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('pdf')}>PDF</Button>
-            <Button className="text-base h-10 px-5 bg-blue-500 hover:bg-blue-600 text-white"
-              onClick={handleOpenEmailDialog} disabled={sendingEmail}>
-              {sendingEmail ? '送信中...' : 'メール送信'}
-            </Button>
+          <div className="flex flex-col gap-2 items-end">
+            <div className="flex gap-2">
+              {isEditable && (
+                <>
+                  <Button className="text-base h-10 px-5" onClick={handleSave} disabled={saving}>
+                    {saving ? '保存中...' : '保存'}</Button>
+                  <Button className="text-base h-10 px-5 bg-green-600 hover:bg-green-700"
+                    onClick={() => setShowConfirmSubmit(true)}>発注確定</Button>
+                  <Button className="text-base h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white"
+                    onClick={() => {
+                      const leadDays = parseInt(settings.delivery_lead_days || '21');
+                      const d = new Date(orderDate || new Date().toISOString().split('T')[0]);
+                      d.setDate(d.getDate() + leadDays);
+                      setProposeDeliveryDate(d.toISOString().split('T')[0]);
+                      setShowProposeDialog(true);
+                    }} disabled={proposing}>
+                    {proposing ? '計算中...' : '自動提案'}
+                  </Button>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="text-sm h-9 px-4" onClick={() => handleExport('pdf')}>PDF</Button>
+              <Button variant="outline" className="text-sm h-9 px-4 text-blue-600" onClick={handleOpenEmailDialog} disabled={sendingEmail}>
+                {sendingEmail ? '送信中...' : 'メール送信'}</Button>
+              <Button variant="outline" className="text-sm h-9 px-4 text-emerald-600" onClick={handleSendLine} disabled={sendingLine}>
+                {sendingLine ? '送信中...' : 'LINE送信'}</Button>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-8">
@@ -805,6 +810,40 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <Button variant="outline" className="text-base h-12 px-6" onClick={() => setShowConfirmSubmit(false)}>いいえ</Button>
             <Button className="text-base h-12 px-6 bg-green-600 hover:bg-green-700"
               onClick={() => handleStatusChange('submitted')}>はい、確定する</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto propose dialog */}
+      <Dialog open={showProposeDialog} onOpenChange={setShowProposeDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle className="text-xl">自動提案</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              昨年の注文データを元に、最適な発注数と納品日を自動計算します。
+            </p>
+            <div>
+              <label className="text-base font-medium">最初の納品希望日</label>
+              <Input type="date" className="text-base h-12 mt-1" value={proposeDeliveryDate}
+                onChange={e => setProposeDeliveryDate(e.target.value)} />
+              <p className="text-xs text-gray-400 mt-1">発注日から{settings.delivery_lead_days || '21'}日後が初期値です</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+              <p><strong>計算内容:</strong></p>
+              <ul className="list-disc ml-5 mt-1 space-y-1 text-gray-600">
+                <li>昨年同時期の注文数から日需要を計算</li>
+                <li>有効在庫が{settings.safety_stock_days || '28'}日分以下の商品に発注提案</li>
+                <li>{settings.target_stock_days || '35'}日分を確保する数量を計算</li>
+                <li>週{settings.weekly_limit || '150'}個以内で納品日を自動振り分け</li>
+                <li>入数/箱に合わせて数量を調整</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="text-base h-12 px-6" onClick={() => setShowProposeDialog(false)}>キャンセル</Button>
+            <Button className="text-base h-12 px-6 bg-purple-600 hover:bg-purple-700 text-white" onClick={handleAutoPropose}>
+              提案を実行
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
