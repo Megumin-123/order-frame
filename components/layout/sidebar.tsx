@@ -17,6 +17,7 @@ const mainNavItems = [
 const settingItems = [
   { href: '/products', label: '商品マスタ' },
   { href: '/settings', label: 'システム設定' },
+  { href: '/guide', label: '運用ガイド' },
 ];
 
 export function Sidebar() {

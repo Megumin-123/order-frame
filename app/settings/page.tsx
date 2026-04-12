@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 
 export default function SettingsPage() {
   const [deliveryLeadDays, setDeliveryLeadDays] = useState('21');
+  const [safetyStockDays, setSafetyStockDays] = useState('28');
+  const [targetStockDays, setTargetStockDays] = useState('35');
+  const [weeklyLimit, setWeeklyLimit] = useState('150');
   const [mdbPath, setMdbPath] = useState('C:\\Users\\smili\\Documents\\system\\sysdata.mdb');
   const [smtpHost, setSmtpHost] = useState('smtp.happy-vision.co.jp');
   const [smtpPort, setSmtpPort] = useState('587');
@@ -23,6 +26,9 @@ export default function SettingsPage() {
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(data => {
       if (data.delivery_lead_days) setDeliveryLeadDays(data.delivery_lead_days);
+      if (data.safety_stock_days) setSafetyStockDays(data.safety_stock_days);
+      if (data.target_stock_days) setTargetStockDays(data.target_stock_days);
+      if (data.weekly_limit) setWeeklyLimit(data.weekly_limit);
       if (data.mdb_path) setMdbPath(data.mdb_path);
       if (data.smtp_host) setSmtpHost(data.smtp_host);
       if (data.smtp_port) setSmtpPort(data.smtp_port);
@@ -41,7 +47,9 @@ export default function SettingsPage() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        delivery_lead_days: deliveryLeadDays, mdb_path: mdbPath,
+        delivery_lead_days: deliveryLeadDays,
+        safety_stock_days: safetyStockDays, target_stock_days: targetStockDays,
+        weekly_limit: weeklyLimit, mdb_path: mdbPath,
         smtp_host: smtpHost, smtp_port: smtpPort, smtp_user: smtpUser, smtp_pass: smtpPass,
         email_to: emailTo, email_subject: emailSubject, email_signature: emailSignature,
       }),
@@ -93,6 +101,39 @@ export default function SettingsPage() {
                 onChange={e => setDeliveryLeadDays(e.target.value)}
               />
               <span className="text-base">日後</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <Label className="text-base font-semibold">自動提案パラメータ</Label>
+          <div className="grid grid-cols-3 gap-3 mt-2">
+            <div>
+              <Label className="text-sm">安全在庫日数</Label>
+              <div className="flex items-center gap-1">
+                <Input type="number" className="w-20 h-10 text-center" value={safetyStockDays}
+                  onChange={e => setSafetyStockDays(e.target.value)} />
+                <span className="text-sm">日</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">この日数以下で発注推奨</p>
+            </div>
+            <div>
+              <Label className="text-sm">目標在庫日数</Label>
+              <div className="flex items-center gap-1">
+                <Input type="number" className="w-20 h-10 text-center" value={targetStockDays}
+                  onChange={e => setTargetStockDays(e.target.value)} />
+                <span className="text-sm">日</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">この日数分を確保するよう発注</p>
+            </div>
+            <div>
+              <Label className="text-sm">週間上限</Label>
+              <div className="flex items-center gap-1">
+                <Input type="number" className="w-20 h-10 text-center" value={weeklyLimit}
+                  onChange={e => setWeeklyLimit(e.target.value)} />
+                <span className="text-sm">個</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">週あたりの納品上限</p>
             </div>
           </div>
         </div>

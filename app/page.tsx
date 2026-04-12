@@ -30,15 +30,18 @@ function getTodayStr(): string {
 export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [deliveries, setDeliveries] = useState<DeliveryScheduleWithProduct[]>([]);
+  const [lastStockCheckDate, setLastStockCheckDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch('/api/orders').then(r => r.json()),
       fetch('/api/deliveries?status=pending&confirmedOnly=1').then(r => r.json()),
-    ]).then(([ordersData, deliveriesData]) => {
+      fetch('/api/stock-check').then(r => r.json()),
+    ]).then(([ordersData, deliveriesData, stockData]) => {
       setOrders(ordersData);
       setDeliveries(deliveriesData);
+      setLastStockCheckDate(stockData.checkedAt);
       setLoading(false);
     });
   }, []);
@@ -53,6 +56,33 @@ export default function DashboardPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">ダッシュボード</h1>
+
+      {/* 在庫登録リマインダー */}
+      {(() => {
+        if (!lastStockCheckDate) return (
+          <div className="bg-red-50 border border-red-300 rounded-lg p-4 mb-6 flex items-center gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-bold text-red-800">在庫登録がまだ行われていません</p>
+              <p className="text-sm text-red-600">在庫登録画面で現在の在庫数を登録してください</p>
+            </div>
+            <Link href="/stock-check" className="ml-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">在庫登録へ</Link>
+          </div>
+        );
+        const lastDate = new Date(lastStockCheckDate);
+        const daysSince = Math.floor((new Date().getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysSince >= 7) return (
+          <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-6 flex items-center gap-3">
+            <span className="text-2xl">📋</span>
+            <div>
+              <p className="font-bold text-yellow-800">在庫登録から{daysSince}日経過しています</p>
+              <p className="text-sm text-yellow-600">週1回の在庫登録をお願いします（前回: {lastStockCheckDate.split('T')[0]}）</p>
+            </div>
+            <Link href="/stock-check" className="ml-auto px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm font-medium">在庫登録へ</Link>
+          </div>
+        );
+        return null;
+      })()}
 
       <div className="grid grid-cols-3 gap-6 mb-8">
         <Card>
