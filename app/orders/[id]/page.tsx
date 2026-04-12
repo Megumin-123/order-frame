@@ -32,7 +32,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [settings, setSettings] = useState<{ delivery_lead_days?: string; mdb_path?: string }>({});
+  const [settings, setSettings] = useState<{ delivery_lead_days?: string; mdb_path?: string; safety_stock_days?: string; target_stock_days?: string; weekly_limit?: string }>({});
   const [otherPendingDeliveries, setOtherPendingDeliveries] = useState<{ delivery_date: string; quantity: number; order_id: number }[]>([]);
   const [orderStats, setOrderStats] = useState<Record<string, Record<string, number>> | null>(null);
   const [statsPeriod, setStatsPeriod] = useState<{ from: string; to: string } | null>(null);
@@ -168,6 +168,114 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     setLoadingStats(false);
   };
 
+  const handleAutoPropose = async () => {
+    if (!orderStats) {
+      toast.warning('先に「注文実績」ボタンで昨年データを取得してください');
+      return;
+    }
+
+    const safetyDays = parseInt(settings.safety_stock_days || '28');
+    const targetDays = parseInt(settings.target_stock_days || '35');
+    const weekLimit = parseInt(settings.weekly_limit || '150');
+    const leadDays = parseInt(settings.delivery_lead_days || '21');
+    const frameSizeToCode: Record<string, string> = { 'SS':'SS', 'インチ':'S', '太子':'M', '四切':'M_PLUS', '大衣':'L', 'F10':'LL' };
+    const colorMap: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
+
+    // Calculate base delivery date
+    const baseDate = new Date(orderDate || new Date().toISOString().split('T')[0]);
+    baseDate.setDate(baseDate.getDate() + leadDays);
+    const baseDateStr = baseDate.toISOString().split('T')[0];
+
+    // Calculate proposals for each item
+    const proposedItems = items.map(item => {
+      const sizeCode = frameSizeToCode[item.frameSizeName];
+      const cc = colorMap[item.colorLabel] || 'YELLOW_OAK';
+      const thirtyDayOrder = sizeCode && orderStats[sizeCode] ? orderStats[sizeCode][cc] || 0 : 0;
+      const dailyDemand = thirtyDayOrder / 30;
+      const effectiveStock = (item.currentStock || 0) + item.pendingDelivery;
+      const daysRemaining = dailyDemand > 0 ? Math.round(effectiveStock / dailyDemand) : 999;
+      const needsOrder = daysRemaining <= safetyDays && dailyDemand > 0;
+
+      let proposedQty = 0;
+      if (needsOrder) {
+        proposedQty = Math.max(0, Math.round(dailyDemand * targetDays - effectiveStock));
+        // Round up to pieces per box if applicable
+        if (item.piecesPerBox > 1 && proposedQty > 0) {
+          proposedQty = Math.ceil(proposedQty / item.piecesPerBox) * item.piecesPerBox;
+        }
+      }
+
+      return { ...item, proposedQty, dailyDemand, daysRemaining, needsOrder };
+    });
+
+    // Collect all items that need ordering, sorted by urgency (lowest daysRemaining first)
+    const needsOrderItems = proposedItems.filter(i => i.needsOrder && i.proposedQty > 0)
+      .sort((a, b) => a.daysRemaining - b.daysRemaining);
+
+    // Build weekly buckets including other pending deliveries
+    const getMonday = (d: Date) => {
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.getFullYear(), d.getMonth(), diff);
+    };
+
+    const weekBuckets = new Map<string, number>();
+    // Add other pending deliveries
+    otherPendingDeliveries.forEach(d => {
+      const parts = d.delivery_date.split('-');
+      const dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const monday = getMonday(dt);
+      const key = monday.toISOString().split('T')[0];
+      weekBuckets.set(key, (weekBuckets.get(key) || 0) + d.quantity);
+    });
+
+    // Assign delivery dates respecting weekly limit
+    const updatedItems = proposedItems.map(item => {
+      if (!item.needsOrder || item.proposedQty === 0) {
+        return { ...item, deliverySchedules: item.deliverySchedules.length > 0 ? item.deliverySchedules : [] };
+      }
+
+      let remaining = item.proposedQty;
+      const schedules: { deliveryDate: string; quantity: number }[] = [];
+      let currentDate = new Date(baseDateStr);
+
+      while (remaining > 0) {
+        const monday = getMonday(currentDate);
+        const weekKey = monday.toISOString().split('T')[0];
+        const weekUsed = weekBuckets.get(weekKey) || 0;
+        const weekAvailable = Math.max(0, weekLimit - weekUsed);
+
+        if (weekAvailable > 0) {
+          const qty = Math.min(remaining, weekAvailable);
+          schedules.push({ deliveryDate: currentDate.toISOString().split('T')[0], quantity: qty });
+          weekBuckets.set(weekKey, weekUsed + qty);
+          remaining -= qty;
+        }
+
+        if (remaining > 0) {
+          // Move to next Monday
+          currentDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7);
+        }
+      }
+
+      return { ...item, deliverySchedules: schedules, quantity: item.proposedQty };
+    });
+
+    setItems(updatedItems.map(i => ({
+      productId: i.productId, quantity: i.proposedQty || i.quantity, unitPrice: i.unitPrice,
+      productName: i.productName, sizeLabel: i.sizeLabel, colorLabel: i.colorLabel,
+      colorCode: i.colorCode, frameSizeName: i.frameSizeName, specs: i.specs,
+      triggerStock: i.triggerStock, stdOrderQty: i.stdOrderQty, piecesPerBox: i.piecesPerBox,
+      currentStock: i.currentStock, pendingDelivery: i.pendingDelivery,
+      pendingDeliveryDetails: i.pendingDeliveryDetails, avgDaily20d: i.avgDaily20d,
+      avgMonthly: i.avgMonthly, deliverySchedules: i.deliverySchedules, memo: i.memo,
+      category: i.category,
+    })));
+
+    const totalProposed = needsOrderItems.reduce((s, i) => s + i.proposedQty, 0);
+    toast.success(`${needsOrderItems.length}商品に合計${totalProposed}個を提案しました`);
+  };
+
   const handleSendLine = async () => {
     setSendingLine(true);
     try {
@@ -286,6 +394,8 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <col style={{width:'55px'}} />{/* 有効在庫 */}
             {orderStats && <col style={{width:'55px'}} />}{/* 30日注文 */}
             {orderStats && <col style={{width:'55px'}} />}{/* 当月予測 */}
+            {orderStats && <col style={{width:'45px'}} />}{/* 日需要 */}
+            {orderStats && <col style={{width:'45px'}} />}{/* 残日数 */}
             <col style={{width:'48px'}} />{/* 下限値 */}
             <col style={{width:'48px'}} />{/* 補充数 */}
             <col style={{width:'48px'}} />{/* 入数/箱 */}
@@ -305,6 +415,8 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                   <th className="text-center px-1 py-2 text-sm font-semibold text-red-600"
                     title={statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数` : ''}>30日注文</th>
                   <th className="text-center px-1 py-2 text-sm font-semibold text-red-600">当月予測</th>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600" title="1日あたりの予測需要">日需要</th>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600" title="有効在庫÷日需要">残日数</th>
                 </>
               )}
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">下限値</th>
@@ -470,6 +582,30 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                         })()}
                       </td>
                     )}
+                    {orderStats && (() => {
+                      const fsc: Record<string, string> = { 'SS':'SS', 'インチ':'S', '太子':'M', '四切':'M_PLUS', '大衣':'L', 'F10':'LL' };
+                      const cm2: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
+                      const sc2 = fsc[item.frameSizeName];
+                      const cc2 = cm2[item.colorLabel] || 'YELLOW_OAK';
+                      const cnt2 = sc2 && orderStats[sc2] ? orderStats[sc2][cc2] || 0 : 0;
+                      const dd2 = cnt2 / 30;
+                      const eff2 = (item.currentStock || 0) + item.pendingDelivery;
+                      const rem2 = dd2 > 0 ? Math.round(eff2 / dd2) : 999;
+                      const safetyDays = parseInt(settings.safety_stock_days || '28');
+                      const isWarning = rem2 <= safetyDays && dd2 > 0;
+                      return (
+                        <>
+                          <td className="px-1 py-1.5 text-center text-sm text-purple-600" rowSpan={rowCount}>
+                            {dd2 > 0 ? dd2.toFixed(1) : '-'}
+                          </td>
+                          <td className={`px-1 py-1.5 text-center text-sm font-medium ${isWarning ? 'text-red-600' : 'text-purple-600'}`} rowSpan={rowCount}
+                            title={isWarning ? `⚠ ${safetyDays}日以下：発注推奨` : ''}>
+                            {dd2 > 0 ? rem2 : '-'}
+                            {isWarning && <span className="text-xs ml-0.5">⚠</span>}
+                          </td>
+                        </>
+                      );
+                    })()}
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.triggerStock}</td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.stdOrderQty}</td>
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.piecesPerBox}</td>
@@ -533,6 +669,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               onClick={handleCalcStats} disabled={loadingStats}>
               {loadingStats ? '計算中...' : '注文実績'}
             </Button>
+            {isEditable && orderStats && (
+              <Button className="text-base h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={handleAutoPropose}>
+                自動提案
+              </Button>
+            )}
             <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('pdf')}>PDF</Button>
             <Button className="text-base h-10 px-5 bg-blue-500 hover:bg-blue-600 text-white"
               onClick={handleOpenEmailDialog} disabled={sendingEmail}>
