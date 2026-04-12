@@ -168,11 +168,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     setLoadingStats(false);
   };
 
+  const [proposing, setProposing] = useState(false);
+
   const handleAutoPropose = async () => {
-    if (!orderStats) {
-      toast.warning('先に「注文実績」ボタンで昨年データを取得してください');
-      return;
-    }
+    setProposing(true);
 
     const safetyDays = parseInt(settings.safety_stock_days || '28');
     const targetDays = parseInt(settings.target_stock_days || '35');
@@ -181,16 +180,32 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     const frameSizeToCode: Record<string, string> = { 'SS':'SS', 'インチ':'S', '太子':'M', '四切':'M_PLUS', '大衣':'L', 'F10':'LL' };
     const colorMap: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
 
-    // Calculate base delivery date
+    // Calculate base delivery date from order date
     const baseDate = new Date(orderDate || new Date().toISOString().split('T')[0]);
     baseDate.setDate(baseDate.getDate() + leadDays);
     const baseDateStr = baseDate.toISOString().split('T')[0];
+
+    // Step 1: Fetch order stats if not already loaded
+    let stats = orderStats;
+    if (!stats) {
+      try {
+        const res = await fetch('/api/order-stats', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deliveryDate: baseDateStr, mdbPath: settings.mdb_path }),
+        });
+        const data = await res.json();
+        if (data.error) { toast.error(data.error); setProposing(false); return; }
+        stats = data.stats;
+        setOrderStats(data.stats);
+        setStatsPeriod(data.period);
+      } catch { toast.error('注文実績の取得に失敗しました'); setProposing(false); return; }
+    }
 
     // Calculate proposals for each item
     const proposedItems = items.map(item => {
       const sizeCode = frameSizeToCode[item.frameSizeName];
       const cc = colorMap[item.colorLabel] || 'YELLOW_OAK';
-      const thirtyDayOrder = sizeCode && orderStats[sizeCode] ? orderStats[sizeCode][cc] || 0 : 0;
+      const thirtyDayOrder = sizeCode && stats![sizeCode] ? stats![sizeCode][cc] || 0 : 0;
       const dailyDemand = thirtyDayOrder / 30;
       const effectiveStock = (item.currentStock || 0) + item.pendingDelivery;
       const daysRemaining = dailyDemand > 0 ? Math.round(effectiveStock / dailyDemand) : 999;
@@ -274,6 +289,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
     const totalProposed = needsOrderItems.reduce((s, i) => s + i.proposedQty, 0);
     toast.success(`${needsOrderItems.length}商品に合計${totalProposed}個を提案しました`);
+    setProposing(false);
   };
 
   const handleSendLine = async () => {
@@ -396,8 +412,8 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             {orderStats && <col style={{width:'55px'}} />}{/* 当月予測 */}
             {orderStats && <col style={{width:'45px'}} />}{/* 日需要 */}
             {orderStats && <col style={{width:'45px'}} />}{/* 残日数 */}
-            <col style={{width:'48px'}} />{/* 下限値 */}
-            <col style={{width:'48px'}} />{/* 補充数 */}
+            {!orderStats && <col style={{width:'45px'}} />}{/* 日需要(常時) */}
+            {!orderStats && <col style={{width:'45px'}} />}{/* 残日数(常時) */}
             <col style={{width:'48px'}} />{/* 入数/箱 */}
           </colgroup>
           <thead>
@@ -419,8 +435,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                   <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600" title="有効在庫÷日需要">残日数</th>
                 </>
               )}
-              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">下限値</th>
-              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">補充数</th>
+              {!orderStats && (
+                <>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600">日需要</th>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600">残日数</th>
+                </>
+              )}
               <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">入数/箱</th>
             </tr>
           </thead>
@@ -606,8 +626,17 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                         </>
                       );
                     })()}
-                    <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.triggerStock}</td>
-                    <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.stdOrderQty}</td>
+                    {!orderStats && (() => {
+                      const fsc3: Record<string, string> = { 'SS':'SS', 'インチ':'S', '太子':'M', '四切':'M_PLUS', '大衣':'L', 'F10':'LL' };
+                      const cm3: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
+                      // Use last stock check data for basic daily demand estimate
+                      return (
+                        <>
+                          <td className="px-1 py-1.5 text-center text-sm text-gray-400" rowSpan={rowCount}>-</td>
+                          <td className="px-1 py-1.5 text-center text-sm text-gray-400" rowSpan={rowCount}>-</td>
+                        </>
+                      );
+                    })()}
                     <td className="px-1 py-1.5 text-center text-sm text-gray-500" rowSpan={rowCount}>{item.piecesPerBox}</td>
                   </tr>
                   {restDs.map((ds, di) => (
@@ -669,10 +698,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               onClick={handleCalcStats} disabled={loadingStats}>
               {loadingStats ? '計算中...' : '注文実績'}
             </Button>
-            {isEditable && orderStats && (
+            {isEditable && (
               <Button className="text-base h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={handleAutoPropose}>
-                自動提案
+                onClick={handleAutoPropose} disabled={proposing}>
+                {proposing ? '計算中...' : '自動提案'}
               </Button>
             )}
             <Button variant="outline" className="text-base h-10 px-5" onClick={() => handleExport('pdf')}>PDF</Button>
