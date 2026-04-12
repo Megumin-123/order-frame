@@ -409,7 +409,6 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <col style={{width:'6px'}} />{/* 区切り */}
             <col style={{width:'55px'}} />{/* 有効在庫 */}
             {orderStats && <col style={{width:'55px'}} />}{/* 30日注文 */}
-            {orderStats && <col style={{width:'55px'}} />}{/* 当月予測 */}
             {orderStats && <col style={{width:'45px'}} />}{/* 日需要 */}
             {orderStats && <col style={{width:'45px'}} />}{/* 残日数 */}
             {!orderStats && <col style={{width:'45px'}} />}{/* 日需要(常時) */}
@@ -430,7 +429,6 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                 <>
                   <th className="text-center px-1 py-2 text-sm font-semibold text-red-600"
                     title={statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数` : ''}>30日注文</th>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-red-600">当月予測</th>
                   <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600" title="1日あたりの予測需要">日需要</th>
                   <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600" title="有効在庫÷日需要">残日数</th>
                 </>
@@ -529,17 +527,6 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                           const colorMap: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
                           const colorCode = colorMap[item.colorLabel] || 'YELLOW_OAK';
                           const count = sizeCode && orderStats[sizeCode] ? orderStats[sizeCode][colorCode] || 0 : 0;
-                          // 当月予測を計算: 30日注文÷30×月末までの日数
-                          let monthlyEstimate = 0;
-                          let monthEndDate = '';
-                          if (statsPeriod && count > 0) {
-                            const fromParts = statsPeriod.from.split('-');
-                            const fromDate = new Date(parseInt(fromParts[0]), parseInt(fromParts[1]) - 1, parseInt(fromParts[2]));
-                            const lastDay = new Date(fromDate.getFullYear(), fromDate.getMonth() + 1, 0);
-                            const daysInMonth = Math.max(1, Math.ceil((lastDay.getTime() - fromDate.getTime()) / (1000*60*60*24)) + 1);
-                            monthlyEstimate = Math.round(count / 30 * daysInMonth);
-                            monthEndDate = `${fromDate.getFullYear()}-${String(fromDate.getMonth()+1).padStart(2,'0')}-${lastDay.getDate()}`;
-                          }
                           return (
                             <>
                               <span className={`text-base font-medium cursor-help ${count > 0 ? 'text-red-600' : 'text-gray-400'}`}>
@@ -549,51 +536,6 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                                 <div className="hidden group-hover/stats:block absolute z-50 right-full mr-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
                                   <div className="font-medium">30日間の注文数: {count}個</div>
                                   <div className="text-gray-300 text-xs mt-1">{statsPeriod.from} ～ {statsPeriod.to}</div>
-                                  <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </td>
-                    )}
-                    {orderStats && (
-                      <td className="px-1 py-1.5 text-center relative group/monthly" rowSpan={rowCount}>
-                        {(() => {
-                          const frameSizeToCode2: Record<string, string> = { 'SS':'SS', 'インチ':'S', '太子':'M', '四切':'M_PLUS', '大衣':'L', 'F10':'LL' };
-                          const sc = frameSizeToCode2[item.frameSizeName];
-                          const cm: Record<string, string> = { '黄オーク':'YELLOW_OAK', 'ブラウン':'BROWN', 'ホワイト':'WHITE' };
-                          const cc = cm[item.colorLabel] || 'YELLOW_OAK';
-                          const cnt = sc && orderStats[sc] ? orderStats[sc][cc] || 0 : 0;
-                          let estimate = 0;
-                          let periodFrom = '';
-                          let periodTo = '';
-                          if (cnt > 0) {
-                            // この商品の納品日から月末までの日数で計算
-                            const myDelivery = item.deliverySchedules.find(ds => ds.deliveryDate && ds.quantity > 0);
-                            const delDate = myDelivery?.deliveryDate || '';
-                            if (delDate) {
-                              const dp = delDate.split('-');
-                              const dd = new Date(parseInt(dp[0]), parseInt(dp[1]) - 1, parseInt(dp[2]));
-                              const lastDayOfMonth = new Date(dd.getFullYear(), dd.getMonth() + 1, 0);
-                              const daysToEnd = Math.max(1, lastDayOfMonth.getDate() - dd.getDate() + 1);
-                              estimate = Math.round(cnt / 30 * daysToEnd);
-                              periodFrom = delDate;
-                              periodTo = `${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${lastDayOfMonth.getDate()}`;
-                            }
-                          }
-                          const hasDelivery = item.deliverySchedules.some(ds => ds.deliveryDate && ds.quantity > 0);
-                          return (
-                            <>
-                              {hasDelivery ? (
-                                <span className={`text-base font-medium cursor-help ${estimate > 0 ? 'text-red-600' : 'text-gray-400'}`}>
-                                  {estimate}
-                                </span>
-                              ) : <span className="text-gray-300">-</span>}
-                              {hasDelivery && statsPeriod && estimate > 0 && (
-                                <div className="hidden group-hover/monthly:block absolute z-50 right-full mr-2 top-1/2 -translate-y-1/2 bg-gray-800 text-white rounded-lg px-3 py-2 text-sm whitespace-nowrap shadow-lg">
-                                  <div className="font-medium">当月予測注文数: {estimate}個</div>
-                                  <div className="text-gray-300 text-xs mt-1">{periodFrom} ～ {periodTo}</div>
                                   <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>
                                 </div>
                               )}
