@@ -124,7 +124,7 @@ export default function OrdersPage() {
                           確定取消
                         </Button>
                       )}
-                      {(order.status === 'draft' || order.status === 'submitted') && (
+                      {order.status === 'draft' && (
                         <Button variant="outline" size="sm" className="text-base text-red-600"
                           onClick={() => setConfirmDelete(order)}>
                           削除
