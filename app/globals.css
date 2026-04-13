@@ -130,6 +130,12 @@
   }
 }
 
+/* 印刷時にサイドバーを非表示 */
+@media print {
+  aside { display: none !important; }
+  main { padding: 0 !important; }
+}
+
 /* Brown color classes for ブラウン frames */
 .bg-brown-light { background-color: #f0e6d6; }
 .bg-brown-header { background-color: #dbc8a8; }
