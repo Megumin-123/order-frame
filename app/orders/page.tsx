@@ -72,14 +72,14 @@ export default function OrdersPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">発注書一覧</h1>
         <Button className="text-base h-12 px-6" onClick={handleAutoCreate} disabled={creating}>
-          {creating ? '作成中...' : '現在庫から発注書を作成'}
+          {creating ? '作成中...' : '発注書を作成'}
         </Button>
       </div>
 
       {orders.length === 0 ? (
         <div className="bg-white rounded-lg border p-12 text-center">
           <p className="text-lg text-gray-500">発注書はまだありません</p>
-          <p className="text-gray-400 mt-2">在庫登録後、「現在庫から発注書を作成」で自動作成できます</p>
+          <p className="text-gray-400 mt-2">在庫登録後、「発注書を作成」で自動作成できます</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg border overflow-hidden">

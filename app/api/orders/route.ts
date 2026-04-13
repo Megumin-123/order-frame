@@ -25,32 +25,12 @@ export async function POST(request: Request) {
   const body = await request.json();
 
   if (body.autoFromStock) {
-    const { data: latestCheck } = await supabase.from('of_stock_checks').select('id').order('id', { ascending: false }).limit(1).single();
-    if (!latestCheck) return NextResponse.json({ error: '在庫登録データがありません。先に在庫登録を行ってください。' }, { status: 400 });
-
-    const { data: allProducts } = await supabase.from('of_products').select('id, unit_price, order_quantity, trigger_stock').eq('is_active', 1).eq('auto_order', 1).order('sort_order');
-    const { data: stockItems } = await supabase.from('of_stock_check_items').select('product_id, current_stock').eq('stock_check_id', latestCheck.id);
-
-    // Get pending deliveries (not yet received) from all existing orders
-    const { data: pendingDeliveries } = await supabase.from('of_delivery_schedules').select('product_id, quantity').eq('is_received', 0);
-    const pendingMap = new Map<number, number>();
-    (pendingDeliveries || []).forEach(d => {
-      pendingMap.set(d.product_id, (pendingMap.get(d.product_id) || 0) + d.quantity);
-    });
-
-    const stockMap = new Map((stockItems || []).map(si => [si.product_id, si]));
+    const { data: allProducts } = await supabase.from('of_products').select('id, unit_price').eq('is_active', 1).eq('auto_order', 1).order('sort_order');
     if (!allProducts?.length) return NextResponse.json({ error: '商品が登録されていません。' }, { status: 400 });
 
-    const items = allProducts.map(p => {
-      const si = stockMap.get(p.id);
-      const currentStock = si?.current_stock ?? 0;
-      const pendingQty = pendingMap.get(p.id) || 0;
-      const effectiveStock = currentStock + pendingQty;
-      const needsOrder = effectiveStock <= p.trigger_stock;
-      return { productId: p.id, quantity: needsOrder ? p.order_quantity : 0, unitPrice: p.unit_price };
-    });
-
-    return createOrder(items, latestCheck.id, body.orderDate, body.memo);
+    // 全商品を数量0で作成（数量は「自動提案」で入力）
+    const items = allProducts.map(p => ({ productId: p.id, quantity: 0, unitPrice: p.unit_price }));
+    return createOrder(items, null, body.orderDate, body.memo);
   }
 
   return createOrder(body.items, body.stockCheckId, body.orderDate, body.memo);
