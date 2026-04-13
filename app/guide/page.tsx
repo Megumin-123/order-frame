@@ -82,6 +82,44 @@ export default function GuidePage() {
       </div>
 
       {/* 週次運用フロー */}
+      {/* 納品日の自動計算 */}
+      <div className="bg-white rounded-lg border p-6 mb-6">
+        <h2 className="text-xl font-bold mb-4 text-indigo-800">📆 納品日の自動計算ルール</h2>
+
+        <div className="space-y-4">
+          <p>「自動提案」ボタンを押すと、以下のルールで最適な納品日を自動計算します。</p>
+
+          <div className="bg-indigo-50 rounded-lg p-4">
+            <h3 className="font-bold mb-2">ステップ1：最短納品日の計算</h3>
+            <p>発注日 + リードタイム（21日）= 最短で届く日</p>
+          </div>
+
+          <div className="bg-indigo-50 rounded-lg p-4">
+            <h3 className="font-bold mb-2">ステップ2：月末支払いの考慮</h3>
+            <p>在庫に余裕がある場合は、<strong>翌月1日以降に納品をずらします</strong>。</p>
+            <p className="mt-1 text-sm text-gray-600">これにより支払いを1ヶ月遅らせることができます。</p>
+            <div className="mt-2 bg-white rounded p-3 text-sm">
+              <p><strong>判断基準：</strong></p>
+              <p>最も在庫が少ない商品の残日数 ≥ 月末までの日数 + 安全マージン（7日）</p>
+              <p className="mt-1">→ <span className="text-green-700 font-bold">余裕あり</span> → 翌月にずらす</p>
+              <p>→ <span className="text-red-700 font-bold">余裕なし</span> → 今月中に納品</p>
+            </div>
+          </div>
+
+          <div className="bg-indigo-50 rounded-lg p-4">
+            <h3 className="font-bold mb-2">ステップ3：週150個制限の考慮</h3>
+            <p>他の発注も含めて、同じ週に150個を超える場合は翌週にずらします。</p>
+          </div>
+
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <h3 className="font-bold mb-2">⚠ 安全マージンについて</h3>
+            <p>翌月にずらすかの判断に7日の安全マージンを設けています。</p>
+            <p className="text-sm text-gray-600 mt-1">昨年より注文が多い月でも、7日分の余裕があれば欠品リスクを低減できます。</p>
+            <p className="text-sm text-gray-600">この日数はシステム設定で変更可能です。</p>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg border p-6 mb-6">
         <h2 className="text-xl font-bold mb-4 text-green-800">📅 週次の運用フロー</h2>
 

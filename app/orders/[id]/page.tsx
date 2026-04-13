@@ -32,7 +32,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [settings, setSettings] = useState<{ delivery_lead_days?: string; mdb_path?: string; safety_stock_days?: string; target_stock_days?: string; weekly_limit?: string }>({});
+  const [settings, setSettings] = useState<{ delivery_lead_days?: string; mdb_path?: string; safety_stock_days?: string; target_stock_days?: string; weekly_limit?: string; safety_margin_days?: string }>({});
   const [otherPendingDeliveries, setOtherPendingDeliveries] = useState<{ delivery_date: string; quantity: number; order_id: number }[]>([]);
   const [orderStats, setOrderStats] = useState<Record<string, Record<string, number>> | null>(null);
   const [statsPeriod, setStatsPeriod] = useState<{ from: string; to: string } | null>(null);
@@ -171,6 +171,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   const [proposing, setProposing] = useState(false);
   const [showProposeDialog, setShowProposeDialog] = useState(false);
   const [proposeDeliveryDate, setProposeDeliveryDate] = useState('');
+  const [proposeMessage, setProposeMessage] = useState('');
 
   const handleAutoPropose = async () => {
     setProposing(true);
@@ -639,9 +640,56 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                   <Button className="text-base h-10 px-5 bg-purple-600 hover:bg-purple-700 text-white"
                     onClick={() => {
                       const leadDays = parseInt(settings.delivery_lead_days || '21');
-                      const d = new Date(orderDate || new Date().toISOString().split('T')[0]);
-                      d.setDate(d.getDate() + leadDays);
-                      setProposeDeliveryDate(d.toISOString().split('T')[0]);
+                      const marginDays = parseInt(settings.safety_margin_days || '7');
+                      const earliest = new Date(orderDate || new Date().toISOString().split('T')[0]);
+                      earliest.setDate(earliest.getDate() + leadDays);
+
+                      // 月末支払い考慮：在庫に余裕があれば翌月にずらす
+                      let msg = '';
+                      const lastDayOfMonth = new Date(earliest.getFullYear(), earliest.getMonth() + 1, 0);
+                      const daysToMonthEnd = Math.ceil((lastDayOfMonth.getTime() - earliest.getTime()) / (1000*60*60*24)) + 1;
+
+                      // 最も残日数が少ない商品を確認
+                      let minDaysRemaining = 999;
+                      items.forEach(item => {
+                        if (item.currentStock !== null && item.category !== 'other') {
+                          const effectiveStock = (item.currentStock || 0) + item.pendingDelivery;
+                          // 日需要は後で計算するので、ここでは有効在庫/下限値で概算
+                          const dailyEst = item.triggerStock > 0 ? item.triggerStock / 28 : 3;
+                          const remaining = dailyEst > 0 ? effectiveStock / dailyEst : 999;
+                          if (remaining < minDaysRemaining) minDaysRemaining = remaining;
+                        }
+                      });
+
+                      let proposedDate = earliest;
+                      if (minDaysRemaining >= daysToMonthEnd + marginDays) {
+                        // 在庫に余裕あり → 翌月1日にずらす
+                        proposedDate = new Date(earliest.getFullYear(), earliest.getMonth() + 1, 1);
+                        msg = `在庫に余裕があるため、翌月初（${proposedDate.getMonth()+1}/${proposedDate.getDate()}）を推奨します。支払いを1ヶ月遅らせることができます。`;
+                      }
+
+                      // 週150個制限チェック
+                      const getMonday = (d: Date) => {
+                        const day = d.getDay();
+                        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                        return new Date(d.getFullYear(), d.getMonth(), diff);
+                      };
+                      const monday = getMonday(proposedDate);
+                      const weekKey = monday.toISOString().split('T')[0];
+                      let weekTotal = 0;
+                      otherPendingDeliveries.forEach(d => {
+                        const dd = new Date(d.delivery_date);
+                        const dm = getMonday(dd);
+                        if (dm.toISOString().split('T')[0] === weekKey) weekTotal += d.quantity;
+                      });
+                      if (weekTotal >= parseInt(settings.weekly_limit || '150')) {
+                        // この週は枠がないので翌週にずらす
+                        proposedDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7);
+                        msg += (msg ? '\n' : '') + `${monday.getMonth()+1}/${monday.getDate()}週は納品枠が一杯のため翌週にずらしました。`;
+                      }
+
+                      setProposeDeliveryDate(proposedDate.toISOString().split('T')[0]);
+                      setProposeMessage(msg);
                       setShowProposeDialog(true);
                     }} disabled={proposing}>
                     {proposing ? '計算中...' : '自動提案'}
@@ -826,7 +874,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               <label className="text-base font-medium">最初の納品希望日</label>
               <Input type="date" className="text-base h-12 mt-1" value={proposeDeliveryDate}
                 onChange={e => setProposeDeliveryDate(e.target.value)} />
-              <p className="text-xs text-gray-400 mt-1">発注日から{settings.delivery_lead_days || '21'}日後が初期値です</p>
+              <p className="text-xs text-gray-400 mt-1">発注日から{settings.delivery_lead_days || '21'}日後を基準に、在庫状況と週制限を考慮して自動計算</p>
+              {proposeMessage && (
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                  {proposeMessage}
+                </div>
+              )}
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-sm">
               <p><strong>計算内容:</strong></p>
