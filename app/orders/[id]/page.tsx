@@ -437,17 +437,44 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               <th className="text-left px-2 py-2 font-semibold">サイズ</th>
               <th className="text-center px-1 py-2 text-sm font-semibold">納品日</th>
               <th className="text-center px-1 py-2 text-sm font-semibold">数量</th>
-              <th className="text-center px-1 py-2 text-sm font-semibold cursor-help" title="同じ商品の納品日ごとの数量を合計した値です。複数日に分かれている場合の総発注数を示します。">数量計<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span></th>
+              <th className="relative group/tip text-center px-1 py-2 text-sm font-semibold cursor-help">
+                数量計<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span>
+                <div className="hidden group-hover/tip:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-72 whitespace-normal">
+                  <div className="font-semibold mb-1">提案数量の計算式</div>
+                  <div>日需要 × 目標在庫日数（{settings.target_stock_days || '50'}日）− 有効在庫</div>
+                  <div className="mt-1 text-gray-300">入数/箱の単位で繰り上げ。残日数が安全在庫日数（{settings.safety_stock_days || '28'}日）以下の商品が提案対象。</div>
+                  <div className="mt-1 text-gray-300">複数の納品日に分散される場合は、その合計を表示します。</div>
+                </div>
+              </th>
               <th className="text-right px-2 py-2 font-semibold">単価</th>
               <th className="text-right px-2 py-2 font-semibold">小計</th>
               <th className="py-2"></th>
-              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500 cursor-help" title="現在庫 + 他の発注の未納品数">有効在庫<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span></th>
+              <th className="relative group/tip text-center px-1 py-2 text-sm font-semibold text-gray-500 cursor-help">
+                有効在庫<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span>
+                <div className="hidden group-hover/tip:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-64 whitespace-normal">
+                  現在庫 + 他の発注の未納品数
+                </div>
+              </th>
               {orderStats && (
                 <>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-red-600 cursor-help"
-                    title={statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数（昨年同時期 30 日間の実績）` : '昨年同時期 30 日間の注文数'}>30日注文<span className="ml-0.5 text-red-300" aria-hidden="true">ⓘ</span></th>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600 cursor-help" title="1日あたりの予測需要（30日注文 ÷ 30 日）">日需要<span className="ml-0.5 text-purple-300" aria-hidden="true">ⓘ</span></th>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600 cursor-help" title="有効在庫が何日分残っているか（有効在庫 ÷ 日需要）">残日数<span className="ml-0.5 text-purple-300" aria-hidden="true">ⓘ</span></th>
+                  <th className="relative group/tip text-center px-1 py-2 text-sm font-semibold text-red-600 cursor-help">
+                    30日注文<span className="ml-0.5 text-red-300" aria-hidden="true">ⓘ</span>
+                    <div className="hidden group-hover/tip:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-72 whitespace-normal">
+                      {statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数（昨年同時期 30 日間の実績）` : '昨年同時期 30 日間の注文数'}
+                    </div>
+                  </th>
+                  <th className="relative group/tip text-center px-1 py-2 text-sm font-semibold text-purple-600 cursor-help">
+                    日需要<span className="ml-0.5 text-purple-300" aria-hidden="true">ⓘ</span>
+                    <div className="hidden group-hover/tip:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-64 whitespace-normal">
+                      1日あたりの予測需要（30日注文 ÷ 30 日）
+                    </div>
+                  </th>
+                  <th className="relative group/tip text-center px-1 py-2 text-sm font-semibold text-purple-600 cursor-help">
+                    残日数<span className="ml-0.5 text-purple-300" aria-hidden="true">ⓘ</span>
+                    <div className="hidden group-hover/tip:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-64 whitespace-normal">
+                      有効在庫が何日分残っているか（有効在庫 ÷ 日需要）
+                    </div>
+                  </th>
                 </>
               )}
               {!orderStats && (
@@ -456,7 +483,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                   <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600">残日数</th>
                 </>
               )}
-              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500 cursor-help" title="1箱あたりの個数（発注数量はこの単位で繰り上げて計算）">入数/箱<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span></th>
+              <th className="relative group/tip text-center px-1 py-2 text-sm font-semibold text-gray-500 cursor-help">
+                入数/箱<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span>
+                <div className="hidden group-hover/tip:block absolute z-50 right-0 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-64 whitespace-normal">
+                  1箱あたりの個数（発注数量はこの単位で繰り上げて計算）
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
