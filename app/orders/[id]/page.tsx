@@ -746,7 +746,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="text-sm h-9 px-4" onClick={() => handleExport('pdf')}>PDF</Button>
+              <Button variant="outline" className="text-sm h-9 px-4" onClick={() => handleExport('pdf')}>発注書印刷</Button>
               <Button variant="outline" className="text-sm h-9 px-4 text-blue-600" onClick={handleOpenEmailDialog} disabled={sendingEmail}>
                 {sendingEmail ? '送信中...' : 'メール送信'}</Button>
               <Button variant="outline" className="text-sm h-9 px-4 text-emerald-600" onClick={handleSendLine} disabled={sendingLine}>

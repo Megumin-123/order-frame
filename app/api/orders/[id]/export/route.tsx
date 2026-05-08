@@ -1,7 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
+import { renderToBuffer } from '@react-pdf/renderer';
 import { SUPPLIER_NAME, SUPPLIER_FAX, COMPANY_NAME, COMPANY_ADDRESS, COMPANY_TEL, COMPANY_FAX } from '@/lib/constants';
+import { OrderPdf } from './order-pdf';
+
+// PDF 生成は Node ランタイム必須 (fs を使ってフォントを読む)
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -104,28 +109,40 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
   }
 
-  // PDF (HTML)
-  const itemRows = mappedItems.map((item, idx) => {
-    const itemDeliveries = deliveryMap.get(item.id) || [];
-    const deliveryRows = itemDeliveries.map(ds => `<tr><td colspan="6" style="padding-left:30px;color:#000000;font-size:10px;padding-top:1px;padding-bottom:1px">&rarr; ${ds.delivery_date} 納品: ${ds.quantity}個</td></tr>`).join('');
-    return `<tr>
-      <td style="text-align:center;border:1px solid #ccc;padding:2px 4px;">${idx + 1}</td>
-      <td style="border:1px solid #ccc;padding:2px 4px;">${item.color_label} ${item.frame_size_name}(${item.size_label})</td>
-      <td style="border:1px solid #ccc;padding:2px 4px;font-size:10px">${item.specs || ''}</td>
-      <td style="text-align:right;border:1px solid #ccc;padding:2px 4px;">${item.quantity}</td>
-      <td style="text-align:right;border:1px solid #ccc;padding:2px 4px;">${item.unit_price.toLocaleString()}</td>
-      <td style="text-align:right;border:1px solid #ccc;padding:2px 4px;">${item.subtotal.toLocaleString()}</td>
-    </tr>${deliveryRows}`;
-  }).join('');
+  // PDF (本物の PDF ファイル)
+  const deliveryRecord: Record<number, { delivery_date: string; quantity: number }[]> = {};
+  deliveryMap.forEach((list, key) => {
+    deliveryRecord[key] = (list || []).map(d => ({ delivery_date: d.delivery_date, quantity: d.quantity }));
+  });
 
-  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>発注書 ${order.order_number}</title>
-<style>body{font-family:'MS Gothic',monospace;font-size:11px;margin:15px}h1{text-align:center;font-size:18px;margin:5px 0}table{border-collapse:collapse;width:100%;margin:8px 0}th{background:#e8e8e8;border:1px solid #ccc;padding:3px 4px;text-align:center;white-space:nowrap;font-size:11px}td{padding:3px 4px;border:1px solid #ccc;font-size:11px}.totals{text-align:right;margin-top:8px}.totals div{margin:2px 0}@media print{@page{size:portrait;margin:8mm}}</style></head>
-<body><h1>注文書</h1>
-<div style="display:flex;justify-content:space-between;margin:8px 0;font-size:11px"><div><strong style="font-size:13px">${SUPPLIER_NAME} 御中</strong><br>(fax:${SUPPLIER_FAX})</div><div style="text-align:right"><strong>${COMPANY_NAME}</strong><br>${COMPANY_ADDRESS}<br>TEL.${COMPANY_TEL} FAX.${COMPANY_FAX}</div></div>
-<div style="font-size:11px">発注番号: ${order.order_number} | 発注日: ${order.order_date}</div>
-<table><thead><tr><th>No.</th><th>商品名</th><th>商品仕様</th><th>数量</th><th>単価</th><th>金額</th></tr></thead><tbody>${itemRows}</tbody></table>
-<div class="totals"><div>税抜小計: ¥${order.subtotal.toLocaleString()}</div><div>消費税(10%): ¥${order.tax_amount.toLocaleString()}</div><div style="font-size:18px;font-weight:bold;border-top:2px solid #000;padding-top:4px">税込合計: ¥${order.total_amount.toLocaleString()}</div></div>
-<script>window.print();</script></body></html>`;
+  const buffer = await renderToBuffer(
+    <OrderPdf
+      order={{
+        order_number: order.order_number,
+        order_date: order.order_date,
+        subtotal: order.subtotal,
+        tax_amount: order.tax_amount,
+        total_amount: order.total_amount,
+      }}
+      items={mappedItems.map(i => ({
+        id: i.id,
+        product_name: i.product_name,
+        size_label: i.size_label,
+        color_label: i.color_label,
+        frame_size_name: i.frame_size_name,
+        specs: i.specs,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+        subtotal: i.subtotal,
+      }))}
+      deliveryMap={deliveryRecord}
+    />
+  );
 
-  return new NextResponse(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+  return new NextResponse(buffer as unknown as BodyInit, {
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="${order.order_number}.pdf"`,
+    },
+  });
 }
