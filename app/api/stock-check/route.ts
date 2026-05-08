@@ -4,14 +4,17 @@ import type { Product } from '@/lib/types';
 import { sendStockAlert, type StockAlertItem } from '@/lib/stock-alert';
 import { fetchMdbStats, calcSafetyStockQty } from '@/lib/mdb-stats';
 
-// その日の MDB stats を使って商品ごとの safety threshold を計算する。
-// MDB が見えなければ trigger_stock を使う。
+// 発注画面と同じ基準日（今日 + 納期日数）で MDB stats を取得し、
+// 商品ごとの safety threshold を計算する。MDB が見えなければ trigger_stock を使う。
 async function computeSafetyMap(
   products: Product[],
   safetyDays: number,
+  leadDays: number,
 ): Promise<{ map: Record<number, number>; mdbAvailable: boolean; mdbError?: string }> {
-  const today = new Date().toISOString().slice(0, 10);
-  const result = await fetchMdbStats(today);
+  const baseDate = new Date();
+  baseDate.setDate(baseDate.getDate() + leadDays);
+  const baseDateStr = baseDate.toISOString().slice(0, 10);
+  const result = await fetchMdbStats(baseDateStr);
   const safetyMap: Record<number, number> = {};
 
   if (!result.ok) {
@@ -33,13 +36,17 @@ async function computeSafetyMap(
   return { map: safetyMap, mdbAvailable: true };
 }
 
-async function getSafetyDays(): Promise<number> {
-  const { data } = await supabase.from('of_settings').select('value').eq('key', 'safety_stock_days').single();
-  return parseInt(data?.value || '28');
+async function getSettings(): Promise<{ safetyDays: number; leadDays: number }> {
+  const { data } = await supabase.from('of_settings').select('key, value').in('key', ['safety_stock_days', 'delivery_lead_days']);
+  const map = new Map((data || []).map((r: { key: string; value: string }) => [r.key, r.value]));
+  return {
+    safetyDays: parseInt(map.get('safety_stock_days') || '28'),
+    leadDays: parseInt(map.get('delivery_lead_days') || '21'),
+  };
 }
 
 export async function GET() {
-  const safetyDays = await getSafetyDays();
+  const { safetyDays, leadDays } = await getSettings();
 
   // 全商品の未受領納品予定数を集計 (商品IDごと)
   const { data: pendingDeliveries } = await supabase.from('of_delivery_schedules')
@@ -53,7 +60,7 @@ export async function GET() {
 
   // 動的安全在庫数を計算
   const { data: products } = await supabase.from('of_products').select('*').eq('is_active', 1);
-  const { map: safetyMap, mdbAvailable, mdbError } = await computeSafetyMap((products || []) as Product[], safetyDays);
+  const { map: safetyMap, mdbAvailable, mdbError } = await computeSafetyMap((products || []) as Product[], safetyDays, leadDays);
 
   const { data: latestCheck } = await supabase.from('of_stock_checks').select('id, checked_at').order('id', { ascending: false }).limit(1).single();
   const items = latestCheck
@@ -72,7 +79,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const { items, memo } = await request.json();
-  const safetyDays = await getSafetyDays();
+  const { safetyDays, leadDays } = await getSettings();
 
   const { data: products } = await supabase.from('of_products').select('*').eq('is_active', 1);
   const productMap = new Map((products || []).map((p: Product) => [p.id, p]));
@@ -88,7 +95,7 @@ export async function POST(request: Request) {
   });
 
   // 動的安全在庫数の計算
-  const { map: safetyMap, mdbAvailable } = await computeSafetyMap((products || []) as Product[], safetyDays);
+  const { map: safetyMap, mdbAvailable } = await computeSafetyMap((products || []) as Product[], safetyDays, leadDays);
 
   const { data: checkData } = await supabase.from('of_stock_checks').insert({ memo: memo || null }).select('id').single();
   const stockCheckId = checkData!.id;
