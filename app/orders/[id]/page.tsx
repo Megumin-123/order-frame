@@ -9,6 +9,17 @@ import { COLOR_OPTIONS, ORDER_STATUS } from '@/lib/constants';
 import type { OrderWithItems, Product } from '@/lib/types';
 import { toast } from 'sonner';
 
+// Date を YYYY-MM-DD 形式（ローカル時刻基準）に整形する。
+// toISOString().split('T')[0] を使うと JST のローカル日付が UTC に変換されて
+// 1日ずれる場合があるため、納品日など「日付として保存・表示する」用途では
+// 必ずこちらを使う。
+const formatDateLocal = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 interface EditDelivery { deliveryDate: string; quantity: number; }
 interface EditItem {
   productId: number; quantity: number; unitPrice: number;
@@ -268,7 +279,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
         if (weekAvailable > 0) {
           const qty = Math.min(remaining, weekAvailable);
-          schedules.push({ deliveryDate: currentDate.toISOString().split('T')[0], quantity: qty });
+          schedules.push({ deliveryDate: formatDateLocal(currentDate), quantity: qty });
           weekBuckets.set(weekKey, weekUsed + qty);
           remaining -= qty;
         }
@@ -344,7 +355,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
     const leadDays = parseInt(settings.delivery_lead_days || '21');
     const d = new Date(orderDate || new Date().toISOString().split('T')[0]);
     d.setDate(d.getDate() + leadDays);
-    const deliveryDateStr = d.toISOString().split('T')[0];
+    const deliveryDateStr = formatDateLocal(d);
     setItems(prev => [...prev, {
       productId: product.id, quantity: 0, unitPrice: product.unit_price,
       productName: product.name, sizeLabel: product.size_label, colorLabel: product.color_label,
@@ -426,17 +437,17 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               <th className="text-left px-2 py-2 font-semibold">サイズ</th>
               <th className="text-center px-1 py-2 text-sm font-semibold">納品日</th>
               <th className="text-center px-1 py-2 text-sm font-semibold">数量</th>
-              <th className="text-center px-1 py-2 text-sm font-semibold">数量計</th>
+              <th className="text-center px-1 py-2 text-sm font-semibold cursor-help" title="同じ商品の納品日ごとの数量を合計した値です。複数日に分かれている場合の総発注数を示します。">数量計<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span></th>
               <th className="text-right px-2 py-2 font-semibold">単価</th>
               <th className="text-right px-2 py-2 font-semibold">小計</th>
               <th className="py-2"></th>
-              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500" title="現在庫 + 他の発注の未納品数">有効在庫</th>
+              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500 cursor-help" title="現在庫 + 他の発注の未納品数">有効在庫<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span></th>
               {orderStats && (
                 <>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-red-600"
-                    title={statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数` : ''}>30日注文</th>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600" title="1日あたりの予測需要">日需要</th>
-                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600" title="有効在庫÷日需要">残日数</th>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-red-600 cursor-help"
+                    title={statsPeriod ? `${statsPeriod.from} ～ ${statsPeriod.to} の注文数（昨年同時期 30 日間の実績）` : '昨年同時期 30 日間の注文数'}>30日注文<span className="ml-0.5 text-red-300" aria-hidden="true">ⓘ</span></th>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600 cursor-help" title="1日あたりの予測需要（30日注文 ÷ 30 日）">日需要<span className="ml-0.5 text-purple-300" aria-hidden="true">ⓘ</span></th>
+                  <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600 cursor-help" title="有効在庫が何日分残っているか（有効在庫 ÷ 日需要）">残日数<span className="ml-0.5 text-purple-300" aria-hidden="true">ⓘ</span></th>
                 </>
               )}
               {!orderStats && (
@@ -445,7 +456,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                   <th className="text-center px-1 py-2 text-sm font-semibold text-purple-600">残日数</th>
                 </>
               )}
-              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500">入数/箱</th>
+              <th className="text-center px-1 py-2 text-sm font-semibold text-gray-500 cursor-help" title="1箱あたりの個数（発注数量はこの単位で繰り上げて計算）">入数/箱<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span></th>
             </tr>
           </thead>
           <tbody>
@@ -688,7 +699,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
                         msg += (msg ? '\n' : '') + `${monday.getMonth()+1}/${monday.getDate()}週は納品枠が一杯のため翌週にずらしました。`;
                       }
 
-                      setProposeDeliveryDate(proposedDate.toISOString().split('T')[0]);
+                      setProposeDeliveryDate(formatDateLocal(proposedDate));
                       setProposeMessage(msg);
                       setShowProposeDialog(true);
                     }} disabled={proposing}>
