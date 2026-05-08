@@ -230,7 +230,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
       let proposedQty = 0;
       if (needsOrder) {
-        proposedQty = Math.max(0, Math.round(dailyDemand * targetDays - effectiveStock));
+        // 納品まで leadDays 日かかる間にも在庫は減るため、
+        // 「納品到着時点で目標在庫日数(targetDays)分を持っている」状態を狙うには
+        //   提案数量 = 日需要 × (目標在庫日数 + リードタイム) − 有効在庫
+        // となる。これでリードタイム消費分も発注量に織り込まれる。
+        const leadDays = parseInt(settings.delivery_lead_days || '21');
+        proposedQty = Math.max(0, Math.round(dailyDemand * (targetDays + leadDays) - effectiveStock));
         // Round up to pieces per box if applicable
         if (item.piecesPerBox > 1 && proposedQty > 0) {
           proposedQty = Math.ceil(proposedQty / item.piecesPerBox) * item.piecesPerBox;
@@ -439,9 +444,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               <th className="text-center px-1 py-2 text-sm font-semibold">数量</th>
               <th className="relative group/tip text-center px-1 py-2 text-sm font-semibold cursor-help">
                 数量計<span className="ml-0.5 text-gray-400" aria-hidden="true">ⓘ</span>
-                <div className="hidden group-hover/tip:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-72 whitespace-normal">
+                <div className="hidden group-hover/tip:block absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 bg-gray-800 text-white rounded-lg px-3 py-2 text-base font-normal text-left shadow-lg w-80 whitespace-normal">
                   <div className="font-semibold mb-1">提案数量の計算式</div>
-                  <div>日需要 × 目標在庫日数（{settings.target_stock_days || '50'}日）− 有効在庫</div>
+                  <div>日需要 ×（目標在庫日数{settings.target_stock_days || '50'}日 + リードタイム{settings.delivery_lead_days || '21'}日）− 有効在庫</div>
+                  <div className="mt-1 text-gray-300">納品到着時に「目標在庫日数」分の在庫を持てるよう、リードタイム中の消費も織り込みます。</div>
                   <div className="mt-1 text-gray-300">入数/箱の単位で繰り上げ。残日数が安全在庫日数（{settings.safety_stock_days || '28'}日）以下の商品が提案対象。</div>
                   <div className="mt-1 text-gray-300">複数の納品日に分散される場合は、その合計を表示します。</div>
                 </div>
@@ -928,8 +934,8 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
               <p><strong>計算内容:</strong></p>
               <ul className="list-disc ml-5 mt-1 space-y-1 text-gray-600">
                 <li>昨年同時期の注文数から日需要を計算</li>
-                <li>有効在庫が{settings.safety_stock_days || '28'}日分以下の商品に発注提案</li>
-                <li>{settings.target_stock_days || '35'}日分を確保する数量を計算</li>
+                <li>残日数が{settings.safety_stock_days || '28'}日以下の商品に発注提案</li>
+                <li>納品到着時に{settings.target_stock_days || '50'}日分を確保（リードタイム{settings.delivery_lead_days || '21'}日分の消費も加味）</li>
                 <li>週{settings.weekly_limit || '150'}個以内で納品日を自動振り分け</li>
                 <li>入数/箱に合わせて数量を調整</li>
               </ul>
