@@ -19,15 +19,22 @@ export default function StockCheckPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
-  const [prevStockValues, setPrevStockValues] = useState<Map<number, number>>(new Map());
+  const [, setPrevStockValues] = useState<Map<number, number>>(new Map());
+  const [safetyStockDays, setSafetyStockDays] = useState<string>('28');
 
   useEffect(() => {
     Promise.all([
       fetch('/api/products').then(r => r.json()),
       fetch('/api/stock-check').then(r => r.json()),
-    ]).then(([productsData, stockData]: [Product[], { checkedAt: string | null; items: { product_id: number; current_stock: number }[] }]) => {
+      fetch('/api/settings').then(r => r.json()).catch(() => ({})),
+    ]).then(([productsData, stockData, settingsData]: [
+      Product[],
+      { checkedAt: string | null; items: { product_id: number; current_stock: number }[] },
+      { safety_stock_days?: string }
+    ]) => {
       setProducts(productsData);
       setLastCheckedAt(stockData.checkedAt);
+      if (settingsData.safety_stock_days) setSafetyStockDays(settingsData.safety_stock_days);
 
       // Build a map of previous stock values
       const prevMap = new Map<number, number>();
@@ -124,11 +131,18 @@ export default function StockCheckPage() {
           </div>
         )}
       </div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <p className="text-gray-600">各商品の現在庫数を入力してください</p>
         <Button className="text-base h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white" onClick={handlePrintCheckSheet}>
           チェック表を印刷
         </Button>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-base">
+        <span className="font-semibold text-blue-800">📊 安全在庫数は <strong className="text-blue-900">{safetyStockDays}日</strong> で計算しています</span>
+        <span className="text-sm text-gray-600 ml-3">
+          ※ 各セルに表示している数値が、その商品の安全在庫数です。在庫がそれを下回ると登録時に LINE/メールで通知されます。
+        </span>
       </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
@@ -155,17 +169,22 @@ export default function StockCheckPage() {
                   if (!product) return <td key={color.code} />;
                   const input = stockInputs.get(product.id);
                   const stock = input?.currentStock || 0;
+                  const isLow = stock > 0 && stock <= product.trigger_stock;
                   return (
                     <td key={color.code} className={`px-4 py-3 ${color.bgClass}`}>
                       <div className="flex flex-col items-center gap-1">
                         <input
                           type="number"
                           min="0"
-                          className="w-24 h-11 text-center text-base font-medium rounded-md border px-2 border-gray-300 bg-white"
+                          className={`w-24 h-11 text-center text-base font-medium rounded-md border px-2 bg-white ${isLow ? 'border-red-400 text-red-700 bg-red-50' : 'border-gray-300'}`}
                           value={stock}
                           onChange={e => updateStock(product.id, parseInt(e.target.value) || 0)}
                           onFocus={e => e.target.select()}
                         />
+                        <div className={`text-xs ${isLow ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                          安全在庫: {product.trigger_stock}個
+                          {isLow && ' ⚠'}
+                        </div>
                       </div>
                     </td>
                   );
