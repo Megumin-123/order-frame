@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { NextResponse } from 'next/server';
 import type { Product } from '@/lib/types';
+import { sendStockAlert, type StockAlertItem } from '@/lib/stock-alert';
 
 export async function GET() {
   const { data: latestCheck } = await supabase.from('of_stock_checks').select('id, checked_at').order('id', { ascending: false }).limit(1).single();
@@ -42,5 +43,27 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json({ stockCheckId, items: checkItems });
+  // 安全在庫を下回った商品があれば LINE / メールで通知。
+  // 通知の失敗は在庫登録自体の失敗にはしない (try/catch で握る)。
+  const alertItems: StockAlertItem[] = checkItems
+    .filter(it => it.needs_order === 1)
+    .map(it => ({
+      productName: it.product_name,
+      colorLabel: it.color_label,
+      frameSizeName: it.frame_size_name,
+      sizeLabel: it.size_label,
+      currentStock: it.current_stock,
+      triggerStock: it.trigger_stock,
+      suggestedQuantity: it.suggested_quantity,
+    }));
+  let alert = null as null | Awaited<ReturnType<typeof sendStockAlert>>;
+  if (alertItems.length > 0) {
+    try {
+      alert = await sendStockAlert(alertItems);
+    } catch (e) {
+      console.error('Stock alert send error:', e);
+    }
+  }
+
+  return NextResponse.json({ stockCheckId, items: checkItems, alert });
 }
