@@ -234,7 +234,12 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
         // 在庫が低くなったとき(残日数 ≤ 安全在庫日数)に発動し、毎回 targetDays 日分を補充する
         // シンプルなルール。有効在庫は引かない。
         //   提案数量 = 日需要 × 発注数量(日数)
-        proposedQty = Math.max(0, Math.round(dailyDemand * targetDays));
+        //
+        // 日需要は画面表示と同じく小数点第1位に丸めてから計算する。
+        // (内部の精密値で計算すると 4.033 × 30 = 121 となり、入数12 で繰り上げて
+        //  132 になってしまうが、表示は「4.0」なのでユーザーの期待は 4.0×30=120)
+        const dailyDemandDisplay = Math.round(dailyDemand * 10) / 10;
+        proposedQty = Math.max(0, Math.round(dailyDemandDisplay * targetDays));
         // Round up to pieces per box if applicable
         if (item.piecesPerBox > 1 && proposedQty > 0) {
           proposedQty = Math.ceil(proposedQty / item.piecesPerBox) * item.piecesPerBox;
