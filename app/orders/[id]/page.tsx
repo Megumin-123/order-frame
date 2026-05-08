@@ -834,6 +834,20 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
         })()}
       </div>
 
+      {/* 自動提案の計算根拠 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-base">
+        <div className="flex items-start gap-2 flex-wrap">
+          <span className="font-semibold text-blue-800 whitespace-nowrap">📊 自動提案の計算根拠</span>
+          <span className="text-gray-700">
+            残日数が <strong className="text-blue-900">{settings.safety_stock_days || '28'}日</strong> 以下の商品に対して、
+            <strong className="text-blue-900">日需要 × {settings.target_stock_days || '30'}日分</strong> を発注します。
+          </span>
+        </div>
+        <div className="mt-1 text-sm text-gray-600 ml-7">
+          ※ 入数/箱の単位で繰り上げ。週 {settings.weekly_limit || '150'} 個までで自動的に納品日を分散します。
+        </div>
+      </div>
+
       {/* Frame groups */}
       {frameItems.map(group => renderColorGroup(group))}
 
