@@ -21,22 +21,34 @@ export default function StockCheckPage() {
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [, setPrevStockValues] = useState<Map<number, number>>(new Map());
   const [pendingByProduct, setPendingByProduct] = useState<Record<number, number>>({});
+  const [safetyByProduct, setSafetyByProduct] = useState<Record<number, number>>({});
+  const [mdbAvailable, setMdbAvailable] = useState<boolean>(true);
+  const [mdbError, setMdbError] = useState<string | undefined>(undefined);
   const [safetyStockDays, setSafetyStockDays] = useState<string>('28');
 
   useEffect(() => {
     Promise.all([
       fetch('/api/products').then(r => r.json()),
       fetch('/api/stock-check').then(r => r.json()),
-      fetch('/api/settings').then(r => r.json()).catch(() => ({})),
-    ]).then(([productsData, stockData, settingsData]: [
+    ]).then(([productsData, stockData]: [
       Product[],
-      { checkedAt: string | null; items: { product_id: number; current_stock: number }[]; pendingByProduct?: Record<number, number> },
-      { safety_stock_days?: string }
+      {
+        checkedAt: string | null;
+        items: { product_id: number; current_stock: number }[];
+        pendingByProduct?: Record<number, number>;
+        safetyByProduct?: Record<number, number>;
+        mdbAvailable?: boolean;
+        mdbError?: string;
+        safetyStockDays?: number;
+      }
     ]) => {
       setProducts(productsData);
       setLastCheckedAt(stockData.checkedAt);
       setPendingByProduct(stockData.pendingByProduct || {});
-      if (settingsData.safety_stock_days) setSafetyStockDays(settingsData.safety_stock_days);
+      setSafetyByProduct(stockData.safetyByProduct || {});
+      setMdbAvailable(stockData.mdbAvailable ?? true);
+      setMdbError(stockData.mdbError);
+      if (stockData.safetyStockDays) setSafetyStockDays(String(stockData.safetyStockDays));
 
       // Build a map of previous stock values
       const prevMap = new Map<number, number>();
@@ -141,10 +153,16 @@ export default function StockCheckPage() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-base">
-        <div className="font-semibold text-blue-800">📊 安全在庫数は <strong className="text-blue-900">{safetyStockDays}日</strong> で計算しています</div>
+        <div className="font-semibold text-blue-800">📊 安全在庫数は <strong className="text-blue-900">{safetyStockDays}日</strong> で計算しています（日需要 × {safetyStockDays}日）</div>
         <div className="text-sm text-gray-600 mt-1">
-          ※ 各セルに表示している数値がその商品の安全在庫数です。<strong>有効在庫（現在庫＋納品予定）</strong>がそれを下回ると、登録時に LINE/メールで通知されます。
+          ※ 各セルに表示している数値がその商品の安全在庫数です。<strong>有効在庫（現在庫＋納品予定）</strong>がそれを下回ると、登録時にメールで通知されます。
         </div>
+        {!mdbAvailable && (
+          <div className="text-sm text-orange-700 mt-2 bg-orange-50 border border-orange-200 rounded px-2 py-1">
+            ⚠ 昨年実績データ（MDB API）が取得できないため、商品マスタの「下限値」で代替表示しています。
+            {mdbError ? `（${mdbError}）` : ''}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
@@ -173,8 +191,10 @@ export default function StockCheckPage() {
                   const stock = input?.currentStock || 0;
                   const pending = pendingByProduct[product.id] || 0;
                   const effective = stock + pending;
+                  // 安全在庫数: API から動的計算済みの値を使う (見つからなければ商品マスタにフォールバック)
+                  const safetyStock = safetyByProduct[product.id] ?? product.trigger_stock;
                   // 有効在庫(入力値+納品予定) が安全在庫以下なら警告
-                  const isLow = effective <= product.trigger_stock;
+                  const isLow = effective <= safetyStock;
                   return (
                     <td key={color.code} className={`px-4 py-3 ${color.bgClass}`}>
                       <div className="flex flex-col items-center gap-1">
@@ -192,7 +212,7 @@ export default function StockCheckPage() {
                           </div>
                         )}
                         <div className={`text-xs ${isLow ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                          安全在庫: {product.trigger_stock}個
+                          安全在庫: {safetyStock}個
                           {isLow && ' ⚠'}
                         </div>
                       </div>

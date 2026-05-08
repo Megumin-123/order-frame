@@ -1,11 +1,13 @@
-// 在庫登録時に「安全在庫を下回った商品」を LINE / メールで通知するヘルパー。
+// 在庫登録時に「安全在庫を下回った商品」をメール通知するヘルパー。
 //
 // 在庫チェック API (`POST /api/stock-check`) が POST 完了直後に呼び出す。
 // 通知の失敗は在庫登録そのものを失敗させてはいけないので、エラーは
 // 投げずに結果オブジェクトで返す。
+//
+// 以前は LINE にも送っていたが、業務運用上 LINE は不要になったため
+// 現在はメールのみ送信する。
 import nodemailer from 'nodemailer';
 import { supabase } from '@/lib/supabase';
-import { sendLinePushMessage } from '@/lib/line';
 import { COMPANY_NAME, COMPANY_TEL, COMPANY_FAX } from '@/lib/constants';
 
 export interface StockAlertItem {
@@ -20,8 +22,6 @@ export interface StockAlertItem {
 }
 
 export interface StockAlertResult {
-  lineSent: boolean;
-  lineError?: string;
   emailSent: boolean;
   emailError?: string;
 }
@@ -68,27 +68,15 @@ function buildAlertText(items: StockAlertItem[]): { subject: string; body: strin
 }
 
 /**
- * 安全在庫を下回った商品リストを LINE とメールに通知する。
+ * 安全在庫を下回った商品リストをメール通知する。
  * - 失敗してもエラーを throw しない（呼び出し元の在庫登録を止めないため）
- * - LINE / メールのどちらか片方しか動かない環境でも、できる方だけ送る
  */
 export async function sendStockAlert(items: StockAlertItem[]): Promise<StockAlertResult> {
   if (items.length === 0) {
-    return { lineSent: false, emailSent: false };
+    return { emailSent: false };
   }
 
   const { subject, body } = buildAlertText(items);
-
-  // LINE 送信
-  let lineSent = false;
-  let lineError: string | undefined;
-  try {
-    const result = await sendLinePushMessage(body);
-    lineSent = result.success;
-    if (!result.success) lineError = result.error;
-  } catch (e) {
-    lineError = e instanceof Error ? e.message : String(e);
-  }
 
   // メール送信（of_settings の SMTP 設定を利用）
   let emailSent = false;
@@ -130,5 +118,5 @@ export async function sendStockAlert(items: StockAlertItem[]): Promise<StockAler
     emailError = e instanceof Error ? e.message : String(e);
   }
 
-  return { lineSent, emailSent, lineError, emailError };
+  return { emailSent, emailError };
 }
