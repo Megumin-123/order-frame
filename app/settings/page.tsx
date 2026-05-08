@@ -120,13 +120,13 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-400 mt-1">この日数以下で発注推奨</p>
             </div>
             <div>
-              <Label className="text-sm">目標在庫日数</Label>
+              <Label className="text-sm">発注数量（日数）</Label>
               <div className="flex items-center gap-1">
                 <Input type="number" className="w-20 h-10 text-center" value={targetStockDays}
                   onChange={e => setTargetStockDays(e.target.value)} />
                 <span className="text-sm">日</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">この日数分を確保するよう発注</p>
+              <p className="text-xs text-gray-400 mt-1">1回の発注で何日分まとめ買いするか</p>
             </div>
             <div>
               <Label className="text-sm">週間上限</Label>

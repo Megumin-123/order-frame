@@ -74,8 +74,7 @@ export default function GuidePage() {
               <li>昨年の<strong>3月3日〜4月2日</strong>の注文数を参照（納品後の需要を予測）</li>
               <li>その期間のSサイズ黄オーク注文数 = 140個 → 日需要 4.7個</li>
               <li>有効在庫80個 → 残日数17日 → <strong>28日以下なので発注推奨</strong></li>
-              <li>目標在庫 = 4.7 × 35 = 165個</li>
-              <li>発注提案数 = 165 − 80 = <strong>85個</strong>（入数25に合わせて100個）</li>
+              <li>発注数量（日数）が30日なら、提案数 = 4.7 × 30 = 141個 → 入数25に合わせて<strong>150個</strong></li>
             </ol>
           </div>
         </div>
