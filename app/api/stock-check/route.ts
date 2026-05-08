@@ -4,11 +4,23 @@ import type { Product } from '@/lib/types';
 import { sendStockAlert, type StockAlertItem } from '@/lib/stock-alert';
 
 export async function GET() {
+  // 全商品の未受領納品予定数を集計 (商品IDごと)
+  const { data: pendingDeliveries } = await supabase.from('of_delivery_schedules')
+    .select('product_id, quantity')
+    .eq('is_received', 0)
+    .gt('quantity', 0);
+  const pendingMap: Record<number, number> = {};
+  (pendingDeliveries || []).forEach(d => {
+    pendingMap[d.product_id] = (pendingMap[d.product_id] || 0) + d.quantity;
+  });
+
   const { data: latestCheck } = await supabase.from('of_stock_checks').select('id, checked_at').order('id', { ascending: false }).limit(1).single();
-  if (!latestCheck) return NextResponse.json({ checkedAt: null, items: [] });
+  if (!latestCheck) {
+    return NextResponse.json({ checkedAt: null, items: [], pendingByProduct: pendingMap });
+  }
 
   const { data: items } = await supabase.from('of_stock_check_items').select('product_id, current_stock').eq('stock_check_id', latestCheck.id);
-  return NextResponse.json({ checkedAt: latestCheck.checked_at, items: items || [] });
+  return NextResponse.json({ checkedAt: latestCheck.checked_at, items: items || [], pendingByProduct: pendingMap });
 }
 
 export async function POST(request: Request) {
@@ -17,6 +29,16 @@ export async function POST(request: Request) {
   const { data: products } = await supabase.from('of_products').select('*').eq('is_active', 1);
   const productMap = new Map((products || []).map((p: Product) => [p.id, p]));
 
+  // 全商品の未受領納品予定数を集計 (商品IDごと)
+  const { data: pendingDeliveries } = await supabase.from('of_delivery_schedules')
+    .select('product_id, quantity')
+    .eq('is_received', 0)
+    .gt('quantity', 0);
+  const pendingMap = new Map<number, number>();
+  (pendingDeliveries || []).forEach(d => {
+    pendingMap.set(d.product_id, (pendingMap.get(d.product_id) || 0) + d.quantity);
+  });
+
   const { data: checkData } = await supabase.from('of_stock_checks').insert({ memo: memo || null }).select('id').single();
   const stockCheckId = checkData!.id;
 
@@ -24,7 +46,10 @@ export async function POST(request: Request) {
   for (const item of items) {
     const product = productMap.get(item.productId);
     if (!product) continue;
-    const needsOrder = item.currentStock <= product.trigger_stock ? 1 : 0;
+    const pending = pendingMap.get(item.productId) || 0;
+    const effectiveStock = item.currentStock + pending;
+    // 有効在庫(現在庫 + 未受領の納品予定) が安全在庫数以下のとき発注必要と判定
+    const needsOrder = effectiveStock <= product.trigger_stock ? 1 : 0;
     const suggestedQuantity = needsOrder ? product.order_quantity : 0;
 
     await supabase.from('of_stock_check_items').insert({
@@ -34,7 +59,8 @@ export async function POST(request: Request) {
     });
 
     checkItems.push({
-      product_id: item.productId, current_stock: item.currentStock,
+      product_id: item.productId, current_stock: item.currentStock, pending_delivery: pending,
+      effective_stock: effectiveStock,
       needs_order: needsOrder, suggested_quantity: suggestedQuantity,
       product_name: product.name, size_label: product.size_label, color_label: product.color_label,
       color_code: product.color_code, frame_size_name: product.frame_size_name,
@@ -53,6 +79,7 @@ export async function POST(request: Request) {
       frameSizeName: it.frame_size_name,
       sizeLabel: it.size_label,
       currentStock: it.current_stock,
+      pendingDelivery: it.pending_delivery,
       triggerStock: it.trigger_stock,
       suggestedQuantity: it.suggested_quantity,
     }));

@@ -14,6 +14,7 @@ export interface StockAlertItem {
   frameSizeName: string;
   sizeLabel: string;
   currentStock: number;
+  pendingDelivery: number;
   triggerStock: number;
   suggestedQuantity: number;
 }
@@ -49,7 +50,11 @@ function buildAlertText(items: StockAlertItem[]): { subject: string; body: strin
   for (const [color, list] of byColor) {
     lines.push(`■ ${color}`);
     for (const it of list) {
-      lines.push(`・${it.frameSizeName}（${it.sizeLabel}） 在庫 ${it.currentStock}個 / 発注目安 ${it.suggestedQuantity}個`);
+      const effective = it.currentStock + it.pendingDelivery;
+      const stockText = it.pendingDelivery > 0
+        ? `在庫 ${it.currentStock}個 + 納品予定 ${it.pendingDelivery}個 = ${effective}個`
+        : `在庫 ${it.currentStock}個`;
+      lines.push(`・${it.frameSizeName}（${it.sizeLabel}） ${stockText} / 安全在庫 ${it.triggerStock}個`);
     }
     lines.push('');
   }

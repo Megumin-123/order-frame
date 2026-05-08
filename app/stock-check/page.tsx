@@ -20,6 +20,7 @@ export default function StockCheckPage() {
   const [submitting, setSubmitting] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [, setPrevStockValues] = useState<Map<number, number>>(new Map());
+  const [pendingByProduct, setPendingByProduct] = useState<Record<number, number>>({});
   const [safetyStockDays, setSafetyStockDays] = useState<string>('28');
 
   useEffect(() => {
@@ -29,11 +30,12 @@ export default function StockCheckPage() {
       fetch('/api/settings').then(r => r.json()).catch(() => ({})),
     ]).then(([productsData, stockData, settingsData]: [
       Product[],
-      { checkedAt: string | null; items: { product_id: number; current_stock: number }[] },
+      { checkedAt: string | null; items: { product_id: number; current_stock: number }[]; pendingByProduct?: Record<number, number> },
       { safety_stock_days?: string }
     ]) => {
       setProducts(productsData);
       setLastCheckedAt(stockData.checkedAt);
+      setPendingByProduct(stockData.pendingByProduct || {});
       if (settingsData.safety_stock_days) setSafetyStockDays(settingsData.safety_stock_days);
 
       // Build a map of previous stock values
@@ -139,10 +141,10 @@ export default function StockCheckPage() {
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4 text-base">
-        <span className="font-semibold text-blue-800">📊 安全在庫数は <strong className="text-blue-900">{safetyStockDays}日</strong> で計算しています</span>
-        <span className="text-sm text-gray-600 ml-3">
-          ※ 各セルに表示している数値が、その商品の安全在庫数です。在庫がそれを下回ると登録時に LINE/メールで通知されます。
-        </span>
+        <div className="font-semibold text-blue-800">📊 安全在庫数は <strong className="text-blue-900">{safetyStockDays}日</strong> で計算しています</div>
+        <div className="text-sm text-gray-600 mt-1">
+          ※ 各セルに表示している数値がその商品の安全在庫数です。<strong>有効在庫（現在庫＋納品予定）</strong>がそれを下回ると、登録時に LINE/メールで通知されます。
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border overflow-hidden">
@@ -169,7 +171,10 @@ export default function StockCheckPage() {
                   if (!product) return <td key={color.code} />;
                   const input = stockInputs.get(product.id);
                   const stock = input?.currentStock || 0;
-                  const isLow = stock > 0 && stock <= product.trigger_stock;
+                  const pending = pendingByProduct[product.id] || 0;
+                  const effective = stock + pending;
+                  // 有効在庫(入力値+納品予定) が安全在庫以下なら警告
+                  const isLow = effective <= product.trigger_stock;
                   return (
                     <td key={color.code} className={`px-4 py-3 ${color.bgClass}`}>
                       <div className="flex flex-col items-center gap-1">
@@ -181,6 +186,11 @@ export default function StockCheckPage() {
                           onChange={e => updateStock(product.id, parseInt(e.target.value) || 0)}
                           onFocus={e => e.target.select()}
                         />
+                        {pending > 0 && (
+                          <div className="text-xs text-blue-700">
+                            +納品予定 {pending}個（合計 {effective}）
+                          </div>
+                        )}
                         <div className={`text-xs ${isLow ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
                           安全在庫: {product.trigger_stock}個
                           {isLow && ' ⚠'}
