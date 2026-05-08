@@ -12,6 +12,7 @@ export default function SettingsPage() {
   const [targetStockDays, setTargetStockDays] = useState('35');
   const [weeklyLimit, setWeeklyLimit] = useState('150');
   const [safetyMarginDays, setSafetyMarginDays] = useState('7');
+  const [minSafetyStock, setMinSafetyStock] = useState('3');
   const [mdbPath, setMdbPath] = useState('C:\\Users\\smili\\Documents\\system\\sysdata.mdb');
   const [smtpHost, setSmtpHost] = useState('smtp.happy-vision.co.jp');
   const [smtpPort, setSmtpPort] = useState('587');
@@ -31,6 +32,7 @@ export default function SettingsPage() {
       if (data.target_stock_days) setTargetStockDays(data.target_stock_days);
       if (data.weekly_limit) setWeeklyLimit(data.weekly_limit);
       if (data.safety_margin_days) setSafetyMarginDays(data.safety_margin_days);
+      if (data.min_safety_stock) setMinSafetyStock(data.min_safety_stock);
       if (data.mdb_path) setMdbPath(data.mdb_path);
       if (data.smtp_host) setSmtpHost(data.smtp_host);
       if (data.smtp_port) setSmtpPort(data.smtp_port);
@@ -51,7 +53,7 @@ export default function SettingsPage() {
       body: JSON.stringify({
         delivery_lead_days: deliveryLeadDays,
         safety_stock_days: safetyStockDays, target_stock_days: targetStockDays,
-        weekly_limit: weeklyLimit, safety_margin_days: safetyMarginDays, mdb_path: mdbPath,
+        weekly_limit: weeklyLimit, safety_margin_days: safetyMarginDays, min_safety_stock: minSafetyStock, mdb_path: mdbPath,
         smtp_host: smtpHost, smtp_port: smtpPort, smtp_user: smtpUser, smtp_pass: smtpPass,
         email_to: emailTo, email_subject: emailSubject, email_signature: emailSignature,
       }),
@@ -109,7 +111,7 @@ export default function SettingsPage() {
 
         <div className="mt-4">
           <Label className="text-base font-semibold">自動提案パラメータ</Label>
-          <div className="grid grid-cols-4 gap-3 mt-2">
+          <div className="grid grid-cols-3 gap-3 mt-2">
             <div>
               <Label className="text-sm">安全在庫日数</Label>
               <div className="flex items-center gap-1">
@@ -118,6 +120,15 @@ export default function SettingsPage() {
                 <span className="text-sm">日</span>
               </div>
               <p className="text-xs text-gray-400 mt-1">この日数以下で発注推奨</p>
+            </div>
+            <div>
+              <Label className="text-sm">最低安全在庫</Label>
+              <div className="flex items-center gap-1">
+                <Input type="number" className="w-20 h-10 text-center" value={minSafetyStock}
+                  onChange={e => setMinSafetyStock(e.target.value)} />
+                <span className="text-sm">個</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">この個数を下回らないよう保証</p>
             </div>
             <div>
               <Label className="text-sm">発注数量（日数）</Label>

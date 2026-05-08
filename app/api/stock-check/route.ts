@@ -6,10 +6,12 @@ import { fetchMdbStats, calcSafetyStockQty } from '@/lib/mdb-stats';
 
 // 発注画面と同じ基準日（今日 + 納期日数）で MDB stats を取得し、
 // 商品ごとの safety threshold を計算する。MDB が見えなければ trigger_stock を使う。
+// minSafety を下回らないように下限を適用する（売れ行きの少ない商品でも最低限の在庫を確保するため）。
 async function computeSafetyMap(
   products: Product[],
   safetyDays: number,
   leadDays: number,
+  minSafety: number,
 ): Promise<{ map: Record<number, number>; mdbAvailable: boolean; mdbError?: string }> {
   const baseDate = new Date();
   baseDate.setDate(baseDate.getDate() + leadDays);
@@ -18,35 +20,34 @@ async function computeSafetyMap(
   const safetyMap: Record<number, number> = {};
 
   if (!result.ok) {
-    // フォールバック: 商品マスタの trigger_stock を使う
-    for (const p of products) safetyMap[p.id] = p.trigger_stock;
+    // フォールバック: 商品マスタの trigger_stock を使う (最低値も適用)
+    for (const p of products) safetyMap[p.id] = Math.max(p.trigger_stock, minSafety);
     return { map: safetyMap, mdbAvailable: false, mdbError: result.error };
   }
 
   for (const p of products) {
     const sizeStats = result.data.stats[p.size_code] || {};
     const thirtyDayOrder = sizeStats[p.color_code] || 0;
-    if (thirtyDayOrder > 0) {
-      safetyMap[p.id] = calcSafetyStockQty(thirtyDayOrder, safetyDays);
-    } else {
-      // MDB に該当データがない商品はマスタの値にフォールバック
-      safetyMap[p.id] = p.trigger_stock;
-    }
+    const computed = thirtyDayOrder > 0
+      ? calcSafetyStockQty(thirtyDayOrder, safetyDays)
+      : p.trigger_stock; // MDB に該当データがない商品はマスタの値
+    safetyMap[p.id] = Math.max(computed, minSafety);
   }
   return { map: safetyMap, mdbAvailable: true };
 }
 
-async function getSettings(): Promise<{ safetyDays: number; leadDays: number }> {
-  const { data } = await supabase.from('of_settings').select('key, value').in('key', ['safety_stock_days', 'delivery_lead_days']);
+async function getSettings(): Promise<{ safetyDays: number; leadDays: number; minSafety: number }> {
+  const { data } = await supabase.from('of_settings').select('key, value').in('key', ['safety_stock_days', 'delivery_lead_days', 'min_safety_stock']);
   const map = new Map((data || []).map((r: { key: string; value: string }) => [r.key, r.value]));
   return {
     safetyDays: parseInt(map.get('safety_stock_days') || '28'),
     leadDays: parseInt(map.get('delivery_lead_days') || '21'),
+    minSafety: parseInt(map.get('min_safety_stock') || '3'),
   };
 }
 
 export async function GET() {
-  const { safetyDays, leadDays } = await getSettings();
+  const { safetyDays, leadDays, minSafety } = await getSettings();
 
   // 全商品の未受領納品予定数を集計 (商品IDごと)
   const { data: pendingDeliveries } = await supabase.from('of_delivery_schedules')
@@ -60,7 +61,7 @@ export async function GET() {
 
   // 動的安全在庫数を計算
   const { data: products } = await supabase.from('of_products').select('*').eq('is_active', 1);
-  const { map: safetyMap, mdbAvailable, mdbError } = await computeSafetyMap((products || []) as Product[], safetyDays, leadDays);
+  const { map: safetyMap, mdbAvailable, mdbError } = await computeSafetyMap((products || []) as Product[], safetyDays, leadDays, minSafety);
 
   const { data: latestCheck } = await supabase.from('of_stock_checks').select('id, checked_at').order('id', { ascending: false }).limit(1).single();
   const items = latestCheck
@@ -79,7 +80,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const { items, memo } = await request.json();
-  const { safetyDays, leadDays } = await getSettings();
+  const { safetyDays, leadDays, minSafety } = await getSettings();
 
   const { data: products } = await supabase.from('of_products').select('*').eq('is_active', 1);
   const productMap = new Map((products || []).map((p: Product) => [p.id, p]));
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
   });
 
   // 動的安全在庫数の計算
-  const { map: safetyMap, mdbAvailable } = await computeSafetyMap((products || []) as Product[], safetyDays, leadDays);
+  const { map: safetyMap, mdbAvailable } = await computeSafetyMap((products || []) as Product[], safetyDays, leadDays, minSafety);
 
   const { data: checkData } = await supabase.from('of_stock_checks').insert({ memo: memo || null }).select('id').single();
   const stockCheckId = checkData!.id;

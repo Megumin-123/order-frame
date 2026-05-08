@@ -18,6 +18,10 @@ export default function GuidePage() {
             <h3 className="font-bold text-lg mb-2">基本的な考え方</h3>
             <p>固定の補充数ではなく、<strong>昨年の同時期の注文数</strong>から必要な発注数を自動計算します。</p>
             <p className="mt-1">季節によって注文数が異なるため（3月は1.3倍、7月は0.8倍など）、時期に応じた適切な量を発注できます。</p>
+            <p className="mt-2 text-sm bg-white rounded p-2">
+              💡 <strong>発注書画面と在庫登録画面で同じ計算ロジック</strong>を使っています。
+              発注画面で「発注推奨」となる商品は、在庫登録画面でも「安全在庫を下回った」と判定されます。
+            </p>
           </div>
 
           <div>
@@ -41,13 +45,14 @@ export default function GuidePage() {
                 </tr>
                 <tr className="border-b bg-yellow-50">
                   <td className="py-2 pr-4 font-medium">④ 発注判断</td>
-                  <td className="py-2"><strong>残日数が28日以下</strong>なら発注推奨（⚠マーク）<br/>
-                    <span className="text-sm text-gray-500">28日 = リードタイム3週間(21日) + 安全在庫1週間(7日)</span></td>
+                  <td className="py-2"><strong>残日数が安全在庫日数以下</strong>なら発注推奨（⚠マーク）<br/>
+                    <span className="text-sm text-gray-500">安全在庫日数（既定28日）= リードタイム3週間(21日) + 安全在庫1週間(7日)。設定画面で変更可</span></td>
                 </tr>
                 <tr className="border-b">
                   <td className="py-2 pr-4 font-medium">⑤ 発注数</td>
-                  <td className="py-2">日需要 × 目標日数(35日) − 有効在庫<br/>
-                    <span className="text-sm text-gray-500">例：4.7 × 35 − 130 = 35個 → 入数(25個/箱)に合わせて50個</span></td>
+                  <td className="py-2">日需要 × 発注数量（日数）<br/>
+                    <span className="text-sm text-gray-500">例：日需要 4.7 × 30日 = 141個 → 入数(25個/箱)に合わせて<strong>150個</strong></span><br/>
+                    <span className="text-sm text-gray-500">※ 有効在庫は引かない（毎回まとまった量を補充するシンプル方式）</span></td>
                 </tr>
               </tbody>
             </table>
@@ -76,6 +81,56 @@ export default function GuidePage() {
               <li>有効在庫80個 → 残日数17日 → <strong>28日以下なので発注推奨</strong></li>
               <li>発注数量（日数）が30日なら、提案数 = 4.7 × 30 = 141個 → 入数25に合わせて<strong>150個</strong></li>
             </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* 在庫登録時の安全在庫判定 */}
+      <div className="bg-white rounded-lg border p-6 mb-6">
+        <h2 className="text-xl font-bold mb-4 text-rose-800">📋 在庫登録時の安全在庫判定</h2>
+
+        <div className="space-y-4">
+          <p>在庫登録画面でも、発注書画面と<strong>同じ計算ロジック</strong>で安全在庫数を求めています。
+            数値が両画面で一致するため、判断のズレが起きません。</p>
+
+          <div>
+            <h3 className="font-bold text-lg mb-2">判定の流れ</h3>
+            <table className="w-full border-collapse">
+              <tbody>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium w-40">① 安全在庫数</td>
+                  <td className="py-2">日需要 × 安全在庫日数（既定28日）<br/>
+                    <span className="text-sm text-gray-500">例：日需要 4.7 × 28 = 約132個</span></td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium">② 最低安全在庫</td>
+                  <td className="py-2">①の値が<strong>最低安全在庫（既定3個）</strong>を下回る場合は最低値を採用<br/>
+                    <span className="text-sm text-gray-500">売れ行きの少ない商品でも3個は確保。設定画面で変更可</span></td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium">③ 有効在庫</td>
+                  <td className="py-2">入力した現在庫 + 未受領の納品予定数<br/>
+                    <span className="text-sm text-gray-500">画面上にも「+納品予定 N個（合計 M）」と表示</span></td>
+                </tr>
+                <tr className="border-b bg-yellow-50">
+                  <td className="py-2 pr-4 font-medium">④ 警告判定</td>
+                  <td className="py-2"><strong>有効在庫 ≤ 安全在庫数</strong> ならセルが赤枠 + ⚠マーク<br/>
+                    <span className="text-sm text-gray-500">登録ボタンを押す前に「メール通知が飛ぶ」ことが分かる</span></td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium">⑤ メール通知</td>
+                  <td className="py-2">登録時、警告対象が1つでもあれば<strong>メールで通知</strong><br/>
+                    <span className="text-sm text-gray-500">在庫数・納品予定・安全在庫数が一覧で届く（LINE通知はなし）</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="bg-rose-50 rounded-lg p-4">
+            <h3 className="font-bold mb-2">📌 MDB が見えないとき</h3>
+            <p className="text-sm">受注データベース(MDB) を持つPCが起動していない・通信できないときは、
+              画面上部にオレンジの警告バナーが表示され、<strong>商品マスタの下限値（旧来の trigger_stock）</strong>に
+              自動的にフォールバックします。在庫登録自体は問題なく行えます。</p>
           </div>
         </div>
       </div>
@@ -128,6 +183,7 @@ export default function GuidePage() {
             <div>
               <p className="font-bold">在庫登録（パートさん）— 毎週月曜日</p>
               <p className="text-gray-600">棚の在庫を数えて「在庫登録」画面に入力。チェック表を印刷して使うと便利です。</p>
+              <p className="text-gray-600 text-sm mt-1">登録時、有効在庫が安全在庫を下回っている商品があると<strong>自動でメール通知</strong>が飛びます。</p>
             </div>
           </div>
           <div className="flex gap-4 items-start">
@@ -179,7 +235,7 @@ export default function GuidePage() {
               <tr><td className="p-2 border font-medium text-red-600">30日注文</td><td className="p-2 border">昨年同時期の30日間の注文数</td></tr>
               <tr><td className="p-2 border font-medium text-red-600">当月予測</td><td className="p-2 border">30日注文から月末までの予測注文数</td></tr>
               <tr><td className="p-2 border font-medium">日需要</td><td className="p-2 border">1日あたりの予測需要（30日注文÷30）</td></tr>
-              <tr><td className="p-2 border font-medium">残日数</td><td className="p-2 border">有効在庫÷日需要。28日以下で⚠表示</td></tr>
+              <tr><td className="p-2 border font-medium">残日数</td><td className="p-2 border">有効在庫÷日需要。安全在庫日数（既定28日）以下で⚠表示</td></tr>
               <tr><td className="p-2 border font-medium">週別納品</td><td className="p-2 border">週ごとの納品合計。150個超で⚠超過表示</td></tr>
             </tbody>
           </table>
