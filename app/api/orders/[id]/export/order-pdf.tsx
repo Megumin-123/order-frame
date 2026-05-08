@@ -2,20 +2,32 @@
 // route.ts から renderToBuffer で呼び出して PDF Buffer を生成する。
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
-import path from 'path';
-import fs from 'fs';
 import {
   SUPPLIER_NAME, SUPPLIER_FAX, COMPANY_NAME, COMPANY_ADDRESS, COMPANY_TEL, COMPANY_FAX,
 } from '@/lib/constants';
 
-// フォント登録は1度だけ。複数リクエストでも安全。
+/**
+ * 日本語フォントを登録する。
+ *
+ * Vercel のサーバーレス関数からはファイルシステムよりも
+ * public/ 配下のファイルを HTTP fetch するほうが確実に動くため、
+ * 自身のオリジン URL からフォントを取得する。
+ *
+ * - `baseUrl` は呼び出し側 (API ルート) で `request.url` から決定し渡す
+ * - 起動後の最初の1回のみ取得し、以降はキャッシュしたバッファを再利用
+ */
 let fontRegistered = false;
-function ensureFontRegistered() {
+export async function ensureFontRegistered(baseUrl: string): Promise<void> {
   if (fontRegistered) return;
-  const fontPath = path.join(process.cwd(), 'assets', 'fonts', 'SawarabiGothic-Regular.ttf');
+  const fontUrl = new URL('/fonts/SawarabiGothic-Regular.ttf', baseUrl).toString();
+  const res = await fetch(fontUrl);
+  if (!res.ok) {
+    throw new Error(`日本語フォントの取得に失敗しました (${res.status}): ${fontUrl}`);
+  }
+  const arrayBuffer = await res.arrayBuffer();
   Font.register({
     family: 'SawarabiGothic',
-    src: fs.readFileSync(fontPath) as unknown as string,
+    src: Buffer.from(arrayBuffer) as unknown as string,
   });
   // 行末の禁則回避: 日本語折り返しの単語境界を緩める
   Font.registerHyphenationCallback((word) => Array.from(word));
@@ -112,7 +124,7 @@ export interface OrderPdfProps {
 }
 
 export function OrderPdf({ order, items, deliveryMap }: OrderPdfProps) {
-  ensureFontRegistered();
+  // ensureFontRegistered は呼び出し元 (route.tsx) で await 済みの想定。
   const fmt = (n: number) => n.toLocaleString('ja-JP');
 
   return (

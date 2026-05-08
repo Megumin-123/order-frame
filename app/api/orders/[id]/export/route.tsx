@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import { renderToBuffer } from '@react-pdf/renderer';
 import { SUPPLIER_NAME, SUPPLIER_FAX, COMPANY_NAME, COMPANY_ADDRESS, COMPANY_TEL, COMPANY_FAX } from '@/lib/constants';
-import { OrderPdf } from './order-pdf';
+import { OrderPdf, ensureFontRegistered } from './order-pdf';
 
 // PDF 生成は Node ランタイム必須 (fs を使ってフォントを読む)
 export const runtime = 'nodejs';
@@ -115,29 +115,41 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     deliveryRecord[key] = (list || []).map(d => ({ delivery_date: d.delivery_date, quantity: d.quantity }));
   });
 
-  const buffer = await renderToBuffer(
-    <OrderPdf
-      order={{
-        order_number: order.order_number,
-        order_date: order.order_date,
-        subtotal: order.subtotal,
-        tax_amount: order.tax_amount,
-        total_amount: order.total_amount,
-      }}
-      items={mappedItems.map(i => ({
-        id: i.id,
-        product_name: i.product_name,
-        size_label: i.size_label,
-        color_label: i.color_label,
-        frame_size_name: i.frame_size_name,
-        specs: i.specs,
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-        subtotal: i.subtotal,
-      }))}
-      deliveryMap={deliveryRecord}
-    />
-  );
+  let buffer: Buffer;
+  try {
+    // 日本語フォントを public/ から fetch して登録 (1度だけ)
+    const reqUrl = new URL(request.url);
+    const baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
+    await ensureFontRegistered(baseUrl);
+
+    buffer = await renderToBuffer(
+      <OrderPdf
+        order={{
+          order_number: order.order_number,
+          order_date: order.order_date,
+          subtotal: order.subtotal,
+          tax_amount: order.tax_amount,
+          total_amount: order.total_amount,
+        }}
+        items={mappedItems.map(i => ({
+          id: i.id,
+          product_name: i.product_name,
+          size_label: i.size_label,
+          color_label: i.color_label,
+          frame_size_name: i.frame_size_name,
+          specs: i.specs,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          subtotal: i.subtotal,
+        }))}
+        deliveryMap={deliveryRecord}
+      />
+    );
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `PDF 生成に失敗しました: ${message}` }, { status: 500 });
+  }
 
   return new NextResponse(buffer as unknown as BodyInit, {
     headers: {
