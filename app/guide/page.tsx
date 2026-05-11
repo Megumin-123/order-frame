@@ -242,6 +242,75 @@ export default function GuidePage() {
         </div>
       </div>
 
+      {/* 受注実績データの更新タイミング */}
+      <div className="bg-white rounded-lg border p-6 mb-6">
+        <h2 className="text-xl font-bold mb-4 text-teal-800">🔄 受注実績データの更新タイミング</h2>
+
+        <div className="space-y-4">
+          <div className="bg-teal-50 rounded-lg p-4">
+            <p>「自動提案」「安全在庫数の表示」で使う <strong>昨年の同時期の受注実績データ</strong> は、
+              山本さんPC で <strong>週1回（前回成功から7日経過後の最初のログオン時）</strong> に自動で集計・更新されます。</p>
+            <p className="mt-2 text-sm bg-white rounded p-2">
+              💡 表示しているのは <strong>昨年同時期のデータ</strong>（1年前の同じ時期の30日分）なので、リアルタイム更新は不要です。
+              週1回の同期で十分に正確な発注判断ができます。
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-lg mb-2">同期はどこで行われているか</h3>
+            <table className="w-full border-collapse">
+              <tbody>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium w-48">場所</td>
+                  <td className="py-2">山本さんPC のローカル同期スクリプト</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium">起動タイミング</td>
+                  <td className="py-2">Windows ログオン時に自動チェック（前回成功から7日以内ならスキップ）</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium">読む元データ</td>
+                  <td className="py-2"><code className="bg-gray-100 px-1">F:\database\sysdata.mdb</code>（山本さんPC内の本番MDB）</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium">同期範囲</td>
+                  <td className="py-2">直近90日分の受注を毎回上書き同期（古いキャンセル変更も拾うため）</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-2 pr-4 font-medium">所要時間</td>
+                  <td className="py-2">1〜2分。バックグラウンドで実行されるので操作の邪魔にならない</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-lg mb-2">手動で同期したい場合（山本さん）</h3>
+            <p>以下の状況のときは、山本さんが手動で同期できます：</p>
+            <ul className="list-disc ml-6 mt-2 space-y-1">
+              <li>システム改修直後で「最新の受注実績で確認したい」</li>
+              <li>長期休暇明けで「7日以上経過しているけど早めに同期したい」</li>
+              <li>画面に「⚠ 受注履歴データが取得できない」のオレンジ警告が出ているとき</li>
+            </ul>
+            <div className="bg-blue-50 rounded-lg p-3 mt-3 text-sm">
+              <p className="font-medium">👉 操作方法</p>
+              <p>山本さんPC のデスクトップにある <strong>「MDB 同期（手動）」</strong> ショートカットをダブルクリック。
+                完了画面が出るまで1〜2分待つ。</p>
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 rounded-lg p-4">
+            <h3 className="font-bold mb-2">⚠ 数値が古い・違うと感じたら</h3>
+            <ol className="list-decimal ml-5 space-y-1">
+              <li>ブラウザを <code className="bg-white px-1">Ctrl+Shift+R</code> で再読み込み</li>
+              <li>それでもダメなら山本さんに「手動同期お願いします」と連絡</li>
+              <li>同期完了後にもう一度 <code className="bg-white px-1">Ctrl+Shift+R</code></li>
+              <li>それでも解決しなければ社長に連絡</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
       {/* 繁忙期の注意 */}
       <div className="bg-white rounded-lg border p-6">
         <h2 className="text-xl font-bold mb-4 text-orange-800">⚠ 繁忙期の注意点</h2>
