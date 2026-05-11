@@ -159,7 +159,7 @@ export default function StockCheckPage() {
         </div>
         {!mdbAvailable && (
           <div className="text-sm text-orange-700 mt-2 bg-orange-50 border border-orange-200 rounded px-2 py-1">
-            ⚠ 昨年実績データ（MDB API）が取得できないため、商品マスタの「下限値」で代替表示しています。
+            ⚠ 昨年実績データ（受注履歴）が取得できないため、商品マスタの「下限値」で代替表示しています。
             {mdbError ? `（${mdbError}）` : ''}
           </div>
         )}
