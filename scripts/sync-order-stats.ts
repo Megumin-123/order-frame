@@ -5,7 +5,7 @@
 // 山本さんPC で Windows タスクスケジューラ「ONLOGON」から呼ばれる想定。
 //
 // 実行例:
-//   npm run sync-order-stats              # ログオン同期 (24時間以内ならスキップ)
+//   npm run sync-order-stats              # ログオン同期 (前回成功から7日以内ならスキップ)
 //   npm run sync-order-stats -- --force   # 強制同期 (デスクトップ手動ショートカット用)
 //   npm run sync-order-stats -- --all     # 全期間 (初回データ移行用)
 //   npm run sync-order-stats -- --since=2024-01-01  # 指定日以降
@@ -130,8 +130,11 @@ async function shouldSkipForRecency(
   const row = data as { synced_at: string };
   const lastSyncedAt = new Date(row.synced_at).getTime();
   const elapsedMs = Date.now() - lastSyncedAt;
-  const TWENTY_THREE_HOURS_MS = 23 * 3600 * 1000;
-  return elapsedMs < TWENTY_THREE_HOURS_MS;
+  // 直近成功からこの期間以内ならスキップ。
+  // 案B: 週1回ペース。月曜朝の Access ロック等で当日失敗しても、火曜朝のログオンで再試行される
+  // (成功した同期だけが skip 判定の対象なので、失敗→翌日再試行は自動で行われる)
+  const SKIP_THRESHOLD_MS = 7 * 24 * 3600 * 1000; // 7日間
+  return elapsedMs < SKIP_THRESHOLD_MS;
 }
 
 function determineDateRange(): { start: string; end: string } {
@@ -367,9 +370,9 @@ async function main() {
     auth: { persistSession: false },
   });
 
-  // 24時間以内スキップ判定
+  // 直近成功から 7日以内ならスキップ
   if (await shouldSkipForRecency(supabase)) {
-    console.log('[sync] 前回成功同期から24時間経過していないためスキップ');
+    console.log('[sync] 前回成功同期から7日経過していないためスキップ');
     await recordSyncLog(supabase, { source: 'auto', status: 'skipped' });
     return;
   }
