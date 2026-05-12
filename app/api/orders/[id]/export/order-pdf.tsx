@@ -11,23 +11,18 @@ import {
  *
  * Vercel のサーバーレス関数からはファイルシステムよりも
  * public/ 配下のファイルを HTTP fetch するほうが確実に動くため、
- * 自身のオリジン URL からフォントを取得する。
+ * 自身のオリジン URL を `src` に渡し、@react-pdf/font に
+ * 内部で fetch させる (初回ロード後はライブラリ側がキャッシュする)。
  *
  * - `baseUrl` は呼び出し側 (API ルート) で `request.url` から決定し渡す
- * - 起動後の最初の1回のみ取得し、以降はキャッシュしたバッファを再利用
  */
 let fontRegistered = false;
 export async function ensureFontRegistered(baseUrl: string): Promise<void> {
   if (fontRegistered) return;
   const fontUrl = new URL('/fonts/SawarabiGothic-Regular.ttf', baseUrl).toString();
-  const res = await fetch(fontUrl);
-  if (!res.ok) {
-    throw new Error(`日本語フォントの取得に失敗しました (${res.status}): ${fontUrl}`);
-  }
-  const arrayBuffer = await res.arrayBuffer();
   Font.register({
     family: 'SawarabiGothic',
-    src: Buffer.from(arrayBuffer) as unknown as string,
+    src: fontUrl,
   });
   // 行末の禁則回避: 日本語折り返しの単語境界を緩める
   Font.registerHyphenationCallback((word) => Array.from(word));
