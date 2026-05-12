@@ -32,6 +32,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // 静的ファイル・画像などは認証対象外
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // 静的ファイル・画像・public 配下のフォントなどは認証対象外
+  // (フォントは PDF 生成時にサーバー内部から fetch するため、認証で弾かれると
+  //  ログイン画面の HTML が返り「Unknown font format」エラーになる)
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|fonts/).*)"],
 };
