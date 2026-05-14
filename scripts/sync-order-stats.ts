@@ -348,13 +348,107 @@ async function recordSyncLog(
     duration_ms?: number;
     error_message?: string;
   },
-): Promise<void> {
-  const { error } = await supabase.from('of_sync_log').insert({
+): Promise<{ id: number | null }> {
+  const { data, error } = await supabase.from('of_sync_log').insert({
     synced_at: new Date().toISOString(),
     ...payload,
-  });
+  }).select('id').single();
   if (error) {
     console.error('[sync] of_sync_log への記録に失敗:', error.message);
+    return { id: null };
+  }
+  return { id: (data as { id: number } | null)?.id ?? null };
+}
+
+/**
+ * 同期失敗時の LINE 通知判定。
+ *
+ * 以下の条件をすべて満たすときだけ通知する:
+ *   1. 直近成功から 14日 以上経過している (= 業務影響が出始めるライン)
+ *   2. 直近 24時間 以内に同条件で通知済みではない (= 1日複数回ログオン時の連投防止)
+ *
+ * 14日 = 通常の同期サイクル 7日 × 2。Access ロック等の一時的な失敗では通知しない。
+ */
+const NOTIFY_STALE_DAYS = 14;
+const NOTIFY_THROTTLE_HOURS = 24;
+
+async function maybeNotifyFailure(
+  supabase: SupabaseClient,
+  currentSyncLogId: number | null,
+  errorMessage: string,
+): Promise<void> {
+  const token = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+  const targetId = process.env.LINE_TARGET_GROUP_ID || process.env.LINE_TARGET_USER_ID;
+  if (!token || !targetId) {
+    console.warn('[sync] LINE_CHANNEL_ACCESS_TOKEN または LINE_TARGET_GROUP_ID 未設定のため失敗通知をスキップ');
+    return;
+  }
+
+  // 直近成功を取得
+  const { data: lastSuccess } = await supabase
+    .from('of_sync_log')
+    .select('synced_at')
+    .eq('status', 'success')
+    .order('synced_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!lastSuccess) {
+    // 一度も成功記録が無ければ初期化未完了とみなして通知しない
+    console.log('[sync] 過去の成功記録が無いため失敗通知をスキップ');
+    return;
+  }
+
+  const lastSuccessAt = new Date((lastSuccess as { synced_at: string }).synced_at);
+  const elapsedDays = (Date.now() - lastSuccessAt.getTime()) / (24 * 3600 * 1000);
+  if (elapsedDays < NOTIFY_STALE_DAYS) {
+    console.log(`[sync] 直近成功から ${elapsedDays.toFixed(1)} 日 (< ${NOTIFY_STALE_DAYS} 日) のため失敗通知をスキップ`);
+    return;
+  }
+
+  // 直近 24時間に通知済みなら抑制
+  const throttleSince = new Date(Date.now() - NOTIFY_THROTTLE_HOURS * 3600 * 1000).toISOString();
+  const { data: recentNotified } = await supabase
+    .from('of_sync_log')
+    .select('id')
+    .gte('notification_sent_at', throttleSince)
+    .limit(1)
+    .maybeSingle();
+  if (recentNotified) {
+    console.log(`[sync] 直近 ${NOTIFY_THROTTLE_HOURS} 時間以内に通知済みのためスキップ`);
+    return;
+  }
+
+  // LINE 送信
+  const lastSuccessYmd = lastSuccessAt.toISOString().slice(0, 10);
+  const errorPreview = errorMessage.length > 200 ? errorMessage.slice(0, 200) + '…' : errorMessage;
+  const text =
+    '[order-frame 同期エラー]\n' +
+    `最終同期成功: ${lastSuccessYmd} (${elapsedDays.toFixed(0)}日経過)\n` +
+    `本日のエラー: ${errorPreview}\n\n` +
+    '対処: 山本さんPC のデスクトップ「MDB 同期（手動）」を\n' +
+    'ダブルクリックしてください。それでも直らない場合は社長まで。';
+
+  try {
+    const res = await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ to: targetId, messages: [{ type: 'text', text }] }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error(`[sync] LINE 通知失敗: ${res.status} ${body}`);
+      return;
+    }
+    console.log('[sync] LINE 失敗通知を送信');
+
+    // 今回の sync_log 行に通知済みマーク
+    if (currentSyncLogId !== null) {
+      await supabase.from('of_sync_log')
+        .update({ notification_sent_at: new Date().toISOString() })
+        .eq('id', currentSyncLogId);
+    }
+  } catch (e) {
+    console.error('[sync] LINE 通知の送信中に例外:', e);
   }
 }
 
@@ -402,8 +496,9 @@ async function main() {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`[sync] エラー: ${errorMsg}`);
+    let syncLogId: number | null = null;
     try {
-      await recordSyncLog(supabase, {
+      const result = await recordSyncLog(supabase, {
         source,
         status: 'error',
         date_range_start: start,
@@ -411,8 +506,15 @@ async function main() {
         duration_ms: Date.now() - startedAt,
         error_message: errorMsg,
       });
+      syncLogId = result.id;
     } catch (logErr) {
       console.error('[sync] of_sync_log 記録も失敗:', logErr);
+    }
+    // 直近成功から 14日 以上経過していれば LINE 通知 (連投防止あり)
+    try {
+      await maybeNotifyFailure(supabase, syncLogId, errorMsg);
+    } catch (notifyErr) {
+      console.error('[sync] LINE 通知処理で例外:', notifyErr);
     }
     process.exit(1);
   }
