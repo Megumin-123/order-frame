@@ -1,0 +1,6 @@
+# Windows バッチファイルは CRLF 改行を強制する。
+# LF だと cmd.exe がコマンド境界を正しく認識できず、日本語コメントを含む
+# 行で cd や call が失敗することがある (sync-order-stats が ENOENT で
+# 落ちる症状の原因になっていた)。
+*.bat text eol=crlf
+*.cmd text eol=crlf
