@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { SyncStatusBadge } from './sync-status-badge';
 
 const mainNavItems = [
   { href: '/', label: 'ダッシュボード', icon: '📊' },
@@ -81,7 +82,8 @@ export function Sidebar() {
           </div>
         )}
       </nav>
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-4 border-t border-gray-100 space-y-3">
+        <SyncStatusBadge />
         <p className="text-center text-xs tracking-widest text-gray-400 uppercase">Happy Vision</p>
       </div>
     </aside>
