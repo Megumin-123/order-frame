@@ -69,7 +69,9 @@ CREATE TABLE IF NOT EXISTS of_order_items (
   unit_price INTEGER NOT NULL,
   subtotal INTEGER NOT NULL,
   memo TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- 同じ発注内で同一商品は1行まで (重複行による金額誤計算の防止)
+  CONSTRAINT of_order_items_unique_product_per_order UNIQUE (order_id, product_id)
 );
 
 -- 納品予定

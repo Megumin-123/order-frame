@@ -61,7 +61,9 @@ CREATE TABLE IF NOT EXISTS order_items (
   unit_price INTEGER NOT NULL,
   subtotal INTEGER NOT NULL,
   memo TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  -- 同じ発注内で同一商品は1行まで (重複行による金額誤計算の防止)
+  UNIQUE (order_id, product_id)
 );
 
 CREATE TABLE IF NOT EXISTS settings (
