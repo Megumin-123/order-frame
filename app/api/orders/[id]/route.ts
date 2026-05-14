@@ -10,8 +10,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { data: items } = await supabase.from('of_order_items').select(`
     *, of_products!inner(name, size_label, color_label, color_code, frame_size_name, specs,
-    trigger_stock, order_quantity, pieces_per_box, category)
+    trigger_stock, order_quantity, pieces_per_box, category, sort_order)
   `).eq('order_id', id).order('id');
+  // 商品マスタの sort_order 順に並べ替え (発注書は編集すると明細 ID が振り直されるため、
+  // ID 順では商品マスタの並びが崩れる)。タイブレークは明細 ID 昇順。
+  (items || []).sort((a, b) => {
+    const aOrd = (a.of_products as { sort_order?: number })?.sort_order ?? 0;
+    const bOrd = (b.of_products as { sort_order?: number })?.sort_order ?? 0;
+    if (aOrd !== bOrd) return aOrd - bOrd;
+    return a.id - b.id;
+  });
 
   const { data: deliveries } = await supabase.from('of_delivery_schedules').select('*').eq('order_id', id).order('delivery_date');
 

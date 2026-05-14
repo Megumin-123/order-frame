@@ -8,8 +8,15 @@ async function generatePdfHtml(orderId: number): Promise<string> {
   if (!order) throw new Error('発注書が見つかりません');
 
   const { data: items } = await supabase.from('of_order_items').select(`
-    *, of_products!inner(name, size_label, color_label, frame_size_name, specs)
+    *, of_products!inner(name, size_label, color_label, frame_size_name, specs, sort_order)
   `).eq('order_id', orderId).gt('quantity', 0).order('id');
+  // 商品マスタの sort_order 順に並べ替え (詳細は /api/orders/[id]/route.ts のコメント参照)
+  (items || []).sort((a, b) => {
+    const aOrd = (a.of_products as { sort_order?: number })?.sort_order ?? 0;
+    const bOrd = (b.of_products as { sort_order?: number })?.sort_order ?? 0;
+    if (aOrd !== bOrd) return aOrd - bOrd;
+    return a.id - b.id;
+  });
 
   const { data: deliveries } = await supabase.from('of_delivery_schedules').select('*').eq('order_id', orderId).order('delivery_date');
 
